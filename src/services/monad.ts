@@ -1,0 +1,1 @@
+// https://monad-games-id-site.vercel.app/api/check-wallet?wallet=0x174dED2198c9dC1d6ED426fa888De09edac7F9b7

@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    container_name: backend
+    ports:
+      - "3000:3000"
+      - "6455:6455"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: db-main
+    environment:
+      POSTGRES_USER: chess
+      POSTGRES_PASSWORD: chesspass
+      POSTGRES_DB: chessdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-server
+    environment:
+      RABBITMQ_DEFAULT_USER: chess
+      RABBITMQ_DEFAULT_PASS: chesspass
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
