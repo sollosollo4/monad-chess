@@ -5,6 +5,7 @@ import { LinkedWallet } from '../entity/LinkedWallet';
 import { Game } from '../entity/Game';
 import { Room } from '../entity/Room';
 import { Move } from '../entity/Move';
+import { Puzzle } from '../entity/Puzzle';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -13,7 +14,7 @@ export const AppDataSource = new DataSource({
   username: ENV.database.username,
   password: ENV.database.password,
   database:ENV.database.database,
-  entities: [User, Game, Room, Move, LinkedWallet],
+  entities: [User, Game, Room, Move, LinkedWallet, Puzzle],
   synchronize: true, // В проде false и миграции
 });
 
