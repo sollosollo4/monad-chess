@@ -121,4 +121,6 @@ export class WebSocketService {
   }
 }
 
-export default new WebSocketService();
+export default new WebSocketService({
+  port: 6455,
+});
