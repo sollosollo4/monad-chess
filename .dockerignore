@@ -32,3 +32,5 @@ coverage/
 
 # Git
 .git
+
+lichess_db_puzzle.csv

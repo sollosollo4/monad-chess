@@ -3,7 +3,6 @@ import http from "http";
 import { AuthService } from "../services/auth_game";
 import { GameService } from "../services/game";
 import { RoomService } from "../services/room_game";
-import { BotService } from "./game_bot";
 
 interface IWebSocketServiceOptions {
   port?: number;
