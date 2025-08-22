@@ -8,6 +8,7 @@ import { Move } from "../entity/Move";
 import { Puzzle } from "../entity/Puzzle";
 import fs from "fs";
 import { parse } from "csv-parse";
+import path from "path";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -20,7 +21,7 @@ export const AppDataSource = new DataSource({
   synchronize: true, // В проде false и миграции
 });
 
-const PUZZLES_SRC = "./data/lichess_db_puzzle.csv";
+const PUZZLES_SRC = path.join(__dirname, "./data/lichess_db_puzzle.csv");
 
 interface Row {
   PuzzleId: string;

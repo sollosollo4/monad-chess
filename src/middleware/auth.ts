@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { ENV } from "../config/env";
 
 export interface AuthRequest extends Request {
-  userId?: number;
+  user?: any;
 }
 
 export function checkJwt(req: AuthRequest, res: Response, next: NextFunction) {
@@ -11,7 +11,7 @@ export function checkJwt(req: AuthRequest, res: Response, next: NextFunction) {
   if (!token) return res.status(401).json({ message: "No token provided" });
   try {
     const payload = jwt.verify(token, ENV.jwt_secret);
-    req.userId = (payload as any).userId;
+    req.user = payload;
     next();
   } catch {
     res.status(401).json({ message: "Invalid token" });

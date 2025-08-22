@@ -23,7 +23,5 @@ export function verifyAccessToken(token: string): any {
 
 // Проверка refresh token
 export function verifyRefreshToken(token: string): any {
-    console.log(`token ${token}`);
-    console.log(`REFRESH_SECRET ${REFRESH_SECRET}`);
     return jwt.verify(token, REFRESH_SECRET);
 }

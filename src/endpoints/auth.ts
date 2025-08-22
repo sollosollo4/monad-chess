@@ -5,6 +5,7 @@ import { LinkedWallet } from "../entity/LinkedWallet";
 import { checkJwt, AuthRequest } from "../middleware/auth";
 import { AppDataSource } from "../config/database";
 import { ENV } from "../config/env";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
 
 const router = express.Router();
 
@@ -79,12 +80,17 @@ router.post("/login-global", async (req, res) => {
       await walletRepo.save(wallet);
     }
 
-    const token = jwt.sign({ userId: user.id }, ENV.jwt_secret, {
-      expiresIn: "1h",
+    const token = generateAccessToken({
+      userId: user.id
+    });
+
+    const refreshToken = generateRefreshToken({
+      userId: user.id
     });
 
     res.json({
       token,
+      refreshToken,
       user: {
         id: user.id,
         username: user.username,

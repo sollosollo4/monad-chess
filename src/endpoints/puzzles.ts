@@ -32,7 +32,6 @@ router.get("/random", async (req: Request, res: Response) => {
   return res.json(puzzle);
 });
 
-// Проверить решение
 router.post("/check", async (req: Request, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
   const { id, moves } = req.body;
@@ -50,29 +49,45 @@ router.post("/check", async (req: Request, res: Response) => {
     const chess = new Chess(puzzle.fen);
 
     for (let i = 0; i < moves.length; i++) {
-      let move = null;
+      const expectedMove = puzzle.solution[i];
+      const playerMove = moves[i];
 
-      if (/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(moves[i])) {
-        const from = moves[i].slice(0, 2);
-        const to = moves[i].slice(2, 4);
-        const promotion = moves[i].length === 5 ? moves[i][4] : undefined;
-
-        move = chess.move({ from, to, promotion });
-      } else {
-        move = chess.move(moves[i]);
+      // если игрок сделал лишний ход или не совпадает с эталоном
+      if (expectedMove !== playerMove) {
+        return res.json({
+          correct: false,
+          step: i,
+          expected: expectedMove,
+          got: playerMove,
+          message: "Wrong move at this step",
+        });
       }
 
+      // применяем ход на доске (чтобы chess.js мог валидировать)
+      const from = playerMove.slice(0, 2);
+      const to = playerMove.slice(2, 4);
+      const promotion = playerMove.length === 5 ? playerMove[4] : undefined;
+
+      const move = chess.move({ from, to, promotion });
       if (!move) {
         return res.json({
           correct: false,
-          message: `Invalid move: ${moves[i]}`,
+          step: i,
+          expected: expectedMove,
+          got: playerMove,
+          message: "Illegal move",
         });
       }
     }
 
-    const correct = JSON.stringify(moves) === JSON.stringify(puzzle.solution);
+    // если игрок дошёл до конца эталона
+    const finished = moves.length === puzzle.solution.length;
 
-    return res.json({ correct });
+    return res.json({
+      correct: true,
+      finished,
+      nextMove: finished ? null : puzzle.solution[moves.length], // следующий ожидаемый ход
+    });
   } catch (err) {
     return res.status(500).json({
       error: "Internal error",
