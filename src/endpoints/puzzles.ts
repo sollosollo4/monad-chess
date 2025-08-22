@@ -3,34 +3,54 @@ import { Request, Response } from "express";
 import { Puzzle } from "../entity/Puzzle";
 import { Chess } from "chess.js";
 import { AppDataSource } from "../config/database";
+import {
+  AuthRequest,
+  optionalAuthMiddleware,
+} from "../middleware/auth_optional";
+import { User } from "../entity/User";
 
 const router = express.Router();
 
-router.get("/random", async (req: Request, res: Response) => {
-  const { minRating, maxRating } = req.query;
-  const puzzleRepo = AppDataSource.getRepository(Puzzle);
+router.get(
+  "/random",
+  optionalAuthMiddleware,
+  async (req: AuthRequest, res: Response) => {
+    const puzzleRepo = AppDataSource.getRepository(Puzzle);
+    let min = 0;
+    let max = 3316;
+    if (req.user) {
+      const userRepo = AppDataSource.getRepository(User);
+      const user = await userRepo.findOneBy({ id: req.user.userId });
+      if (!user || !user.puzzleRating) {
+        return res.status(400).json({ error: "User puzzleRating not set" });
+      }
+      const rating = user.puzzleRating;
+      min = Math.max(rating - 50, 0);
+      max = rating + 50;
+    } else {
+      min = 0;
+      max = 500;
+    }
+    if (min > max) {
+      return res
+        .status(400)
+        .json({ error: "`minRating` must be <= `maxRating`" });
+    }
 
-  const min = minRating ? Number(minRating) : 0;
-  const max = maxRating ? Number(maxRating) : 9999;
-  if (min > max) {
-    return res
-      .status(400)
-      .json({ error: "`minRating` must be <= `maxRating`" });
+    const puzzle = await puzzleRepo
+      .createQueryBuilder("p")
+      .where("p.rating BETWEEN :min AND :max", { min, max })
+      .orderBy("RANDOM()")
+      .limit(1)
+      .getOne();
+
+    if (!puzzle) {
+      return res.status(404).json({ error: "No puzzle found in range" });
+    }
+
+    return res.json(puzzle);
   }
-
-  const puzzle = await puzzleRepo
-    .createQueryBuilder("p")
-    .where("p.rating BETWEEN :min AND :max", { min, max })
-    .orderBy("RANDOM()")
-    .limit(1)
-    .getOne();
-
-  if (!puzzle) {
-    return res.status(404).json({ error: "No puzzle found in range" });
-  }
-
-  return res.json(puzzle);
-});
+);
 
 router.post("/check", async (req: Request, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);

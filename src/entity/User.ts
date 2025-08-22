@@ -22,4 +22,7 @@ export class User {
 
   @Column({ type: "int", default: 1200 })
   rating!: number;
+
+  @Column({ type: "int", default: 500 })
+  puzzleRating!: number;
 }
