@@ -7,7 +7,7 @@ import roomsRouter from "./endpoints/rooms";
 import walletRouter from "./endpoints/wallet";
 import puzzleRouter from "./endpoints/puzzles";
 
-import { websocket } from "./services/websocket";
+import WebSocketService from "./services/websocket";
 import { initDb } from "./config/database";
 import { attachTraceId } from "./middleware/loggerWithTraceId";
 import { responseWrapper } from "./middleware/responseWrapper";
@@ -36,7 +36,7 @@ app.use("/api/puzzles", puzzleRouter);
 
 export const startApp = async () => {
   await initDb();
-  websocket.start();
+  WebSocketService.start();
 };
 
 export default app;
