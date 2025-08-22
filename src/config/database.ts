@@ -43,6 +43,10 @@ export const initDb = async () => {
     const repo = AppDataSource.getRepository(Puzzle);
     const puzzles_count = await repo.count();
     if (puzzles_count === 0) {
+      if (!fs.existsSync(PUZZLES_SRC)) {
+        console.warn(`[preprocess] File not found: ${PUZZLES_SRC}. Skipping.`);
+        return;
+      }
       const parser = fs
         .createReadStream(PUZZLES_SRC)
         .pipe(parse({ columns: true, trim: true }));
