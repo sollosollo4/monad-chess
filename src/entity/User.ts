@@ -19,4 +19,7 @@ export class User {
 
   @OneToMany(() => LinkedWallet, (wallet) => wallet.user, { cascade: true })
   wallets!: LinkedWallet[];
+
+  @Column({})
+  rating!: number;
 }

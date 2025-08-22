@@ -6,24 +6,33 @@ import { AppDataSource } from "../config/database";
 
 const router = express.Router();
 
-router.get("/", async (req: Request, res: Response) => {
+router.get("/random", async (req: Request, res: Response) => {
+  const { minRating, maxRating } = req.query;
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
-  const count = await puzzleRepo.count();
-  if (count === 0) {
-    return res.status(404).json({ error: "No puzzles in database" });
+
+  const min = minRating ? Number(minRating) : 0;
+  const max = maxRating ? Number(maxRating) : 9999;
+  if (min > max) {
+    return res
+      .status(400)
+      .json({ error: "`minRating` must be <= `maxRating`" });
   }
 
-  const randomOffset = Math.floor(Math.random() * count);
-  const puzzle = await puzzleRepo.find({
-    skip: randomOffset,
-    take: 1,
-  });
+  const puzzle = await puzzleRepo
+    .createQueryBuilder("p")
+    .where("p.rating BETWEEN :min AND :max", { min, max })
+    .orderBy("RANDOM()")
+    .limit(1)
+    .getOne();
+
+  if (!puzzle) {
+    return res.status(404).json({ error: "No puzzle found in range" });
+  }
 
   return res.json(puzzle);
 });
 
 // Проверить решение
-
 router.post("/check", async (req: Request, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
   const { id, moves } = req.body;
@@ -54,12 +63,14 @@ router.post("/check", async (req: Request, res: Response) => {
       }
 
       if (!move) {
-        return res.json({ correct: false, message: `Invalid move: ${moves[i]}` });
+        return res.json({
+          correct: false,
+          message: `Invalid move: ${moves[i]}`,
+        });
       }
     }
 
-    const correct =
-      JSON.stringify(moves) === JSON.stringify(puzzle.solution);
+    const correct = JSON.stringify(moves) === JSON.stringify(puzzle.solution);
 
     return res.json({ correct });
   } catch (err) {
