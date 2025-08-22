@@ -34,10 +34,10 @@ router.get("/random", async (req: Request, res: Response) => {
 
 router.post("/check", async (req: Request, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
-  const { id, moves } = req.body;
+  const { id, move, step } = req.body;
 
-  if (!id || !moves || !Array.isArray(moves)) {
-    return res.status(400).json({ error: "id and moves[] are required" });
+  if (!id || !move || typeof step !== "number") {
+    return res.status(400).json({ error: "id, move and step are required" });
   }
 
   const puzzle = await puzzleRepo.findOneBy({ id });
@@ -48,45 +48,47 @@ router.post("/check", async (req: Request, res: Response) => {
   try {
     const chess = new Chess(puzzle.fen);
 
-    for (let i = 0; i < moves.length; i++) {
-      const expectedMove = puzzle.solution[i];
-      const playerMove = moves[i];
-
-      // если игрок сделал лишний ход или не совпадает с эталоном
-      if (expectedMove !== playerMove) {
-        return res.json({
-          correct: false,
-          step: i,
-          expected: expectedMove,
-          got: playerMove,
-          message: "Wrong move at this step",
-        });
-      }
-
-      // применяем ход на доске (чтобы chess.js мог валидировать)
-      const from = playerMove.slice(0, 2);
-      const to = playerMove.slice(2, 4);
-      const promotion = playerMove.length === 5 ? playerMove[4] : undefined;
-
-      const move = chess.move({ from, to, promotion });
-      if (!move) {
-        return res.json({
-          correct: false,
-          step: i,
-          expected: expectedMove,
-          got: playerMove,
-          message: "Illegal move",
-        });
-      }
+    for (let i = 0; i < step; i++) {
+      const prevMove = puzzle.solution[i];
+      const from = prevMove.slice(0, 2);
+      const to = prevMove.slice(2, 4);
+      const promotion = prevMove.length === 5 ? prevMove[4] : undefined;
+      chess.move({ from, to, promotion });
     }
 
-    // если игрок дошёл до конца эталона
-    const finished = moves.length === puzzle.solution.length;
+    const expectedMove = puzzle.solution[step];
+    if (move !== expectedMove) {
+      return res.json({
+        correct: false,
+        step,
+        expected: expectedMove,
+        got: move,
+        message: "Wrong move at this step",
+      });
+    }
+
+    const from = move.slice(0, 2);
+    const to = move.slice(2, 4);
+    const promotion = move.length === 5 ? move[4] : undefined;
+
+    const applied = chess.move({ from, to, promotion });
+    if (!applied) {
+      return res.json({
+        correct: false,
+        step,
+        expected: expectedMove,
+        got: move,
+        message: "Illegal move",
+      });
+    }
+
+    const finished = step + 1 === puzzle.solution.length;
+    const nextMove = finished ? null : puzzle.solution[step + 1];
 
     return res.json({
       correct: true,
       finished,
-      nextMove: finished ? null : puzzle.solution[moves.length], // следующий ожидаемый ход
+      nextMove,
     });
   } catch (err) {
     return res.status(500).json({
