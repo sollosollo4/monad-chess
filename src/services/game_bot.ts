@@ -1,4 +1,5 @@
 import Stockfish from "stockfish";
+import { logger } from "../utils/log";
 
 export class BotService {
   private engine: any;
@@ -11,7 +12,7 @@ export class BotService {
       const line = event.toString();
       if (line.includes("uciok")) {
         this.ready = true;
-        console.log("[BotService] Stockfish ready");
+        logger.info("[BotService] Stockfish ready");
       }
     };
 

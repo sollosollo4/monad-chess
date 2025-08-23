@@ -3,6 +3,7 @@ import http from "http";
 import { AuthService } from "../services/auth_game";
 import { GameService } from "../services/game";
 import { RoomService } from "../services/room_game";
+import { logger } from "../utils/log";
 
 interface IWebSocketServiceOptions {
   port?: number;
@@ -24,7 +25,7 @@ export class WebSocketService {
   public start(): void {
     const { port, server, path = "" } = this.options;
     this.wss = new WebSocketServer({ port, server, path });
-    console.log(`[WebSocket] Server started on port ${port}, path: ${path}`);
+    logger.info(`[WebSocket] Server started on port ${port}, path: ${path}`);
 
     this.wss.on("connection", async (ws: WebSocket) => {
       ws.on("message", async (raw) => {

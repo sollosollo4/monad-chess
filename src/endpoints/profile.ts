@@ -5,7 +5,7 @@ import { AppDataSource } from "../config/database";
 import { User } from "../entity/User";
 
 const router = express.Router();
-router.post("/me", checkJwt, async (req: AuthRequest, res) => {
+router.get("/me", checkJwt, async (req: AuthRequest, res) => {
   try {
     const { userId } = req.user;
     const userRepo = AppDataSource.getRepository(User);

@@ -9,6 +9,7 @@ import { Puzzle } from "../entity/Puzzle";
 import fs from "fs";
 import { parse } from "csv-parse";
 import path from "path";
+import { logger } from "../utils/log";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -39,7 +40,7 @@ interface Row {
 export const initDb = async () => {
   try {
     await AppDataSource.initialize();
-    console.log("Database connected");
+    logger.info("Database connected");
     // init puzzles
     const repo = AppDataSource.getRepository(Puzzle);
     const puzzles_count = await repo.count();
@@ -66,13 +67,13 @@ export const initDb = async () => {
         count++;
 
         if (count % 1000 === 0) {
-          console.log(`Inserted ${count} puzzles...`);
+          logger.info(`Inserted ${count} puzzles...`);
         }
       }
     } else {
-      console.log(`Puzzles count: ${puzzles_count}`);
+      logger.info(`Puzzles count: ${puzzles_count}`);
     }
   } catch (error) {
-    console.error(`DB init error, ${error}`);
+    logger.error(`DB init error, ${error}`);
   }
 };
