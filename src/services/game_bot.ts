@@ -1,40 +1,40 @@
-import Stockfish from "stockfish";
+import { spawn } from "child_process";
 import { logger } from "../utils/log";
 
 export class BotService {
-  private engine: any;
-  private ready = false;
+  private engine;
+  private listeners: ((line: string) => void)[] = [];
 
   constructor() {
-    //this.engine = Stockfish();
-
-    this.engine.onmessage = (event: any) => {
-      const line = event.toString();
-      if (line.includes("uciok")) {
-        this.ready = true;
-        logger.info("[BotService] Stockfish ready");
+    this.engine = spawn("stockfish");
+    this.engine.stdout.on("data", (data) => {
+      const lines = data.toString().split("\n").filter(Boolean);
+      for (const line of lines) {
+        this.listeners.forEach((cb) => cb(line));
       }
-    };
+    });
 
-    this.engine.postMessage("uci");
+    this.send("uci");
+    logger.info("[BotService] Stockfish started");
   }
 
-  async getBestMove(fen: string): Promise<string | null> {
-    if (!this.ready) return null;
+  private send(cmd: string) {
+    this.engine.stdin.write(cmd + "\n");
+  }
 
+  async getBestMove(fen: string, depth = 12): Promise<string> {
     return new Promise((resolve) => {
-      let bestMove: string | null = null;
-
-      this.engine.onmessage = (event: any) => {
-        const line = event.toString();
+      const handler = (line: string) => {
         if (line.startsWith("bestmove")) {
-          bestMove = line.split(" ")[1];
-          resolve(bestMove);
+          const move = line.split(" ")[1];
+          this.listeners = this.listeners.filter((cb) => cb !== handler);
+          resolve(move);
         }
       };
+      this.listeners.push(handler);
 
-      this.engine.postMessage(`position fen ${fen}`);
-      this.engine.postMessage("go depth 12");
+      this.send(`position fen ${fen}`);
+      this.send(`go depth ${depth}`);
     });
   }
 }

@@ -48,7 +48,7 @@ export class GameService {
       });
       await this.gameRepo.save(game);
 
-      if (white === "BOT") {
+      if (white === "BOT" && chess.turn() === "w") {
         await this.makeBotMove(game, room.code);
       }
     } else {
@@ -64,7 +64,7 @@ export class GameService {
     return game;
   }
 
-  private async makeBotMove(game: Game, roomCode: string) {
+  async makeBotMove(game: Game, roomCode: string) {
     const chess = new Chess(game.fen);
     const botService = new BotService();
 

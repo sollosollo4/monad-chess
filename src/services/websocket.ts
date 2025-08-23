@@ -4,6 +4,7 @@ import { AuthService } from "../services/auth_game";
 import { GameService } from "../services/game";
 import { RoomService } from "../services/room_game";
 import { logger } from "../utils/log";
+import { BotService } from "./game_bot";
 
 interface IWebSocketServiceOptions {
   port?: number;
@@ -30,7 +31,7 @@ export class WebSocketService {
     this.wss.on("connection", async (ws: WebSocket) => {
       ws.on("message", async (raw) => {
         try {
-          const msg = JSON.parse(String(raw));
+          const msg = JSON.parse(raw.toString());
 
           switch (msg.type) {
             case "auth":
@@ -61,7 +62,10 @@ export class WebSocketService {
       (ws as any).username = user.username;
       this.roomService.joinRoom(ws, msg.room);
 
-      const game = await this.gameService.getOrCreateGame(msg.room, user.username);
+      const game = await this.gameService.getOrCreateGame(
+        msg.room,
+        user.username
+      );
 
       ws.send(
         JSON.stringify({
@@ -89,11 +93,11 @@ export class WebSocketService {
       if (!username || !roomCode) throw new Error("Not authenticated");
 
       const game = await this.gameService.getOrCreateGame(roomCode, username);
-      const { move, game: updated, chess } = await this.gameService.makeMove(
-        game,
-        username,
-        msg
-      );
+      const {
+        move,
+        game: updated,
+        chess,
+      } = await this.gameService.makeMove(game, username, msg);
 
       this.roomService.broadcast(roomCode, {
         type: "move",
@@ -104,12 +108,51 @@ export class WebSocketService {
         by: username,
       });
 
-      if (game.white === "BOT" || game.black === "BOT") {
-        //const botService = new BotService(this.gameService, this.roomService);
-        //botService.makeBotMove(updated, roomCode);
+      const botSide =
+        updated.white === "BOT"
+          ? "white"
+          : updated.black === "BOT"
+          ? "black"
+          : null;
+      if (botSide && chess.turn() === (botSide === "white" ? "w" : "b")) {
+        const botService = new BotService();
+        const bestMove = await botService.getBestMove(chess.fen(), 12);
+
+        if (bestMove) {
+          const botMove = chess.move({
+            from: bestMove.slice(0, 2),
+            to: bestMove.slice(2, 4),
+            promotion: "q",
+          });
+
+          if (botMove) {
+            await this.gameService.makeMove(updated, "BOT", {
+              from: botMove.from,
+              to: botMove.to,
+              promotion: "q",
+            });
+
+            this.roomService.broadcast(roomCode, {
+              type: "move",
+              from: botMove.from,
+              to: botMove.to,
+              san: botMove.san,
+              fen: chess.fen(),
+              by: "BOT",
+            });
+
+            if (chess.isGameOver()) {
+              this.roomService.broadcast(roomCode, {
+                type: "game_over",
+                result: this.gameService.determineResult(chess),
+              });
+            }
+          }
+        }
       }
 
-      if (!updated.active) {
+      // Если игрок закончил игру (без бота)
+      if (!updated.active && !botSide) {
         this.roomService.broadcast(roomCode, {
           type: "game_over",
           result: this.gameService.determineResult(chess),
