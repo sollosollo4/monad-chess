@@ -6,6 +6,7 @@ import authRouter from "./endpoints/auth";
 import roomsRouter from "./endpoints/rooms";
 import walletRouter from "./endpoints/wallet";
 import puzzleRouter from "./endpoints/puzzles";
+import profileRouter from "./endpoints/profile";
 
 import WebSocketService from "./services/websocket";
 import { initDb } from "./config/database";
@@ -33,6 +34,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/wallet", walletRouter);
 app.use("/api/rooms", roomsRouter);
 app.use("/api/puzzles", puzzleRouter);
+app.use("/api/profile", profileRouter);
 
 export const startApp = async () => {
   await initDb();
