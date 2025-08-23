@@ -5,7 +5,11 @@ import { LinkedWallet } from "../entity/LinkedWallet";
 import { checkJwt, AuthRequest } from "../middleware/auth";
 import { AppDataSource } from "../config/database";
 import { ENV } from "../config/env";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from "../utils/jwt";
 
 const router = express.Router();
 
@@ -38,7 +42,7 @@ router.post("/login-global", async (req, res) => {
 
     const existsAddress = await walletRepo.findOne({
       where: { address },
-      relations: ["user"]
+      relations: ["user"],
     });
 
     let user: User | null = null;
@@ -72,7 +76,7 @@ router.post("/login-global", async (req, res) => {
     }
     const existsWallet = await walletRepo.findOne({
       where: { address, providerAppId },
-      relations: ['user']
+      relations: ["user"],
     });
 
     if (!existsWallet) {
@@ -81,11 +85,17 @@ router.post("/login-global", async (req, res) => {
     }
 
     const token = generateAccessToken({
-      userId: user.id
+      userId: user.id,
     });
 
     const refreshToken = generateRefreshToken({
-      userId: user.id
+      userId: user.id,
+    });
+
+    res.cookie("refresh_token", refreshToken, {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
     res.json({
@@ -96,6 +106,8 @@ router.post("/login-global", async (req, res) => {
         username: user.username,
         wallets: user.wallets,
         monad_games_id: user.monad_games_id,
+        rating: user.rating,
+        puzzle_rating: user.puzzleRating,
       },
     });
   } catch (err: any) {
@@ -104,9 +116,39 @@ router.post("/login-global", async (req, res) => {
   }
 });
 
+router.post("/refresh", async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+
+    if (!refreshToken) {
+      return res.fail("Unauthorized", "No refresh token", 401);
+    }
+
+    let payload;
+    try {
+      payload = verifyRefreshToken(refreshToken);
+    } catch {
+      return res.fail("Unauthorized", "Invalid refresh token", 401);
+    }
+    const accessToken = generateAccessToken(payload);
+
+    res.success({
+      success: true,
+      token: accessToken,
+      userId: payload.userId,
+      payload,
+    });
+  } catch (e) {
+    res.status(500).json({
+      success: false,
+      error: { code: "ServerError", message: "Server error" },
+    });
+  }
+});
+
 router.post("/link-wallet", checkJwt, async (req: AuthRequest, res) => {
   const { address, providerAppId } = req.body;
-  const userId = req.userId!;
+  const userId = req.user.userId!;
   const userRepo = AppDataSource.getRepository(User);
   const walletRepo = AppDataSource.getRepository(LinkedWallet);
 

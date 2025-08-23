@@ -52,9 +52,10 @@ router.get(
   }
 );
 
-router.post("/check", async (req: Request, res: Response) => {
+router.post("/check", optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
   const { id, move, step } = req.body;
+  let new_rating = 0;
 
   if (!id || !move || typeof step !== "number") {
     return res.status(400).json({ error: "id, move and step are required" });
@@ -78,12 +79,18 @@ router.post("/check", async (req: Request, res: Response) => {
 
     const expectedMove = puzzle.solution[step];
     if (move !== expectedMove) {
+      if(req.user?.userId) {
+        new_rating = await updateRating(req.user?.userId, -2);
+      }
       return res.json({
         correct: false,
+        finished: false,
         step,
         expected: expectedMove,
         got: move,
         message: "Wrong move at this step",
+        new_rating,
+        rating_change: -2
       });
     }
 
@@ -93,22 +100,34 @@ router.post("/check", async (req: Request, res: Response) => {
 
     const applied = chess.move({ from, to, promotion });
     if (!applied) {
+      if (req.user?.userId) {
+        new_rating = await updateRating(req.user?.userId, -2);
+      }
       return res.json({
         correct: false,
+        finished: false,
         step,
         expected: expectedMove,
         got: move,
         message: "Illegal move",
+        new_rating,
+        rating_change: -2
       });
     }
 
     const finished = step + 1 === puzzle.solution.length;
     const nextMove = finished ? null : puzzle.solution[step + 1];
 
+    if (finished && req.user?.userId) {
+      new_rating = await updateRating(req.user?.userId, 10);
+    }
+
     return res.json({
       correct: true,
       finished,
       nextMove,
+      new_rating,
+      rating_change: 10
     });
   } catch (err) {
     return res.status(500).json({
@@ -117,5 +136,18 @@ router.post("/check", async (req: Request, res: Response) => {
     });
   }
 });
+
+async function updateRating(userId: number, delta: number) {
+  const { raw } = await AppDataSource
+    .getRepository(User)
+    .createQueryBuilder()
+    .update(User)
+    .set({ puzzleRating: () => `"puzzleRating" + ${delta}` })
+    .where("id = :id", { id: userId })
+    .returning("puzzleRating")
+    .execute();
+
+  return raw[0].puzzleRating as number;
+}
 
 export default router;
