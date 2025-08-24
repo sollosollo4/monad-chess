@@ -25,10 +25,12 @@ export class GameService {
     if (!room) throw new Error("Room not found");
 
     let game = await this.gameRepo.findOne({ 
-      where: { room: { id: room.id }, active: true }, 
+      where: { room: { id: room.id }}, 
       relations: ["room"] 
     });
-    logger.info(JSON.stringify(game))
+    
+    if(game && !game.active)
+      throw new Error("Already played");
 
     if (!game) {
       const chess = new Chess();
