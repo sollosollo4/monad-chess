@@ -1,10 +1,10 @@
 import { Server as WebSocketServer, WebSocket } from "ws";
 import http from "http";
 import { AuthService } from "../services/auth_game";
-import { GameService } from "../services/game";
+import { GameService, TimeoutError } from "../services/game";
 import { RoomService } from "../services/room_game";
 import { logger } from "../utils/log";
-import { BotService } from "./game_bot";
+import { StockfishService } from "./stockfish_service";
 
 interface IWebSocketServiceOptions {
   port?: number;
@@ -88,15 +88,18 @@ export class WebSocketService {
 
   private async handleMove(ws: WebSocket, msg: any) {
     try {
+      const stockfishService = new StockfishService();
       const username = (ws as any).username;
       const roomCode = (ws as any).room;
       if (!username || !roomCode) throw new Error("Not authenticated");
 
       const game = await this.gameService.getOrCreateGame(roomCode, username);
+      
       const {
         move,
         game: updated,
         chess,
+        analyze,
       } = await this.gameService.makeMove(game, username, msg);
 
       this.roomService.broadcast(roomCode, {
@@ -106,6 +109,10 @@ export class WebSocketService {
         san: move.san,
         fen: updated.fen,
         by: username,
+        comment: await stockfishService.getComment(updated.fen, 12),
+        analyze,
+        whiteTime: updated.whiteTime,
+        blackTime: updated.blackTime,
       });
 
       const botSide =
@@ -115,8 +122,8 @@ export class WebSocketService {
           ? "black"
           : null;
       if (botSide && chess.turn() === (botSide === "white" ? "w" : "b")) {
-        const botService = new BotService();
-        const bestMove = await botService.getBestMove(chess.fen(), 12);
+        
+        const bestMove = await stockfishService.getBestMove(updated.fen, 12);
 
         if (bestMove) {
           const botMove = chess.move({
@@ -126,7 +133,7 @@ export class WebSocketService {
           });
 
           if (botMove) {
-            await this.gameService.makeMove(updated, "BOT", {
+            const { chess: updatedChess } = await this.gameService.makeMove(updated, "BOT", {
               from: botMove.from,
               to: botMove.to,
               promotion: "q",
@@ -137,8 +144,9 @@ export class WebSocketService {
               from: botMove.from,
               to: botMove.to,
               san: botMove.san,
-              fen: chess.fen(),
+              fen: updatedChess.fen(),
               by: "BOT",
+              comment: stockfishService.getComment(updatedChess.fen(), 12)
             });
 
             if (chess.isGameOver()) {
@@ -159,6 +167,14 @@ export class WebSocketService {
         });
       }
     } catch (e) {
+      if(e instanceof TimeoutError) {
+        const roomCode = (ws as any).room;
+        this.roomService.broadcast(roomCode, {
+          type: "game_over",
+          result: { reason: "timeout", winner: e.winner },
+        });
+        return;
+      }
       ws.send(JSON.stringify({ type: "error", message: (e as Error).message }));
     }
   }

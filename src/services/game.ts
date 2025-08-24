@@ -4,7 +4,16 @@ import { Game } from "../entity/Game";
 import { Move } from "../entity/Move";
 import { Room } from "../entity/Room";
 import { RoomService } from "./room_game";
-import { BotService } from "./game_bot";
+import { StockfishService } from "./stockfish_service";
+import { logger } from "../utils/log";
+
+export class TimeoutError extends Error {
+  winner;
+  constructor(winner: string) {
+    super();
+    this.winner = winner;
+  }
+}
 
 export class GameService {
   private gameRepo = AppDataSource.getRepository(Game);
@@ -15,7 +24,11 @@ export class GameService {
     const room = await this.roomRepo.findOne({ where: { code: roomCode } });
     if (!room) throw new Error("Room not found");
 
-    let game = await this.gameRepo.findOne({ where: { room, active: true } });
+    let game = await this.gameRepo.findOne({ 
+      where: { room: { id: room.id }, active: true }, 
+      relations: ["room"] 
+    });
+    logger.info(JSON.stringify(game))
 
     if (!game) {
       const chess = new Chess();
@@ -27,7 +40,7 @@ export class GameService {
       if (room.adminSide === "random") {
         // случайно выбрать сторону админа
         const adminSide = Math.random() > 0.5 ? "white" : "black";
-        room.adminSide = adminSide; // сохраняем, чтобы все знали
+        room.adminSide = adminSide;
         await this.roomRepo.save(room);
       }
 
@@ -45,6 +58,10 @@ export class GameService {
         black,
         fen: chess.fen(),
         active: true,
+        whiteTime: 300, // 5 мин
+        blackTime: 300,
+        increment: 2, // например, +2 сек за ход
+        lastMoveAt: Date.now(),
       });
       await this.gameRepo.save(game);
 
@@ -66,7 +83,7 @@ export class GameService {
 
   async makeBotMove(game: Game, roomCode: string) {
     const chess = new Chess(game.fen);
-    const botService = new BotService();
+    const botService = new StockfishService();
 
     const best = await botService.getBestMove(chess.fen());
     if (!best) return;
@@ -91,6 +108,7 @@ export class GameService {
 
     game.fen = chess.fen();
     if (chess.isGameOver()) game.active = false;
+    
     await this.gameRepo.save(game);
 
     const roomService = new RoomService();
@@ -112,7 +130,10 @@ export class GameService {
   }
 
   async makeMove(game: Game, username: string, msg: any) {
+    const stockfishService = new StockfishService();
     const chess = new Chess(game.fen);
+
+    const analyze = await stockfishService.analyzeMove(chess.fen(), msg.from, msg.to, 12);
 
     // проверка чей ход
     const sideToMove = chess.turn() === "w" ? "white" : "black";
@@ -122,6 +143,25 @@ export class GameService {
       throw new Error("Not your turn");
     }
 
+    const now = Date.now();
+    if (game.lastMoveAt) {
+      const elapsed = Math.floor((now - game.lastMoveAt) / 1000);
+      if (sideToMove === "white") {
+        game.whiteTime -= elapsed;
+        if (game.whiteTime <= 0) {
+          game.active = false;
+          await this.gameRepo.save(game);
+          throw new TimeoutError("black");
+        }
+      } else {
+        game.blackTime -= elapsed;
+        if (game.blackTime <= 0) {
+          game.active = false;
+          await this.gameRepo.save(game);
+          throw new TimeoutError("white");
+        }
+      }
+    }
     const move = chess.move({
       from: msg.from,
       to: msg.to,
@@ -129,6 +169,9 @@ export class GameService {
     });
 
     if (!move) throw new Error("Invalid move");
+
+    if (sideToMove === "white") game.whiteTime += game.increment;
+    else game.blackTime += game.increment;
 
     await this.moveRepo.save(
       this.moveRepo.create({
@@ -140,6 +183,7 @@ export class GameService {
       })
     );
 
+    game.lastMoveAt = now;
     game.fen = chess.fen();
     if (chess.isGameOver()) {
       game.active = false;
@@ -147,7 +191,7 @@ export class GameService {
 
     await this.gameRepo.save(game);
 
-    return { move, game, chess };
+    return { move, game, chess, analyze };
   }
 
   determineResult(chess: Chess) {

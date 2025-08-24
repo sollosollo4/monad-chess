@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, JoinColumn, OneToOne } from "typeorm";
 import { Room } from "./Room";
 
 @Entity()
@@ -6,7 +6,7 @@ export class Game {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @ManyToOne(() => Room)
+  @OneToOne(() => Room)
   @JoinColumn()
   room!: Room;
 
@@ -24,4 +24,16 @@ export class Game {
 
   @CreateDateColumn()
   createdAt!: Date;
+
+  @Column({ type: "int", default: 300 }) // 5 минут, например
+  whiteTime!: number;
+
+  @Column({ type: "int", default: 300 })
+  blackTime!: number;
+
+  @Column({ type: "int", default: 0 }) // при желании инкремент (например +2 сек)
+  increment!: number;
+
+  @Column({ type: "bigint", nullable: true }) 
+  lastMoveAt!: number; // timestamp последнего хода
 }

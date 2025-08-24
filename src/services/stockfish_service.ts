@@ -1,0 +1,125 @@
+import { spawn } from "child_process";
+import { logger } from "../utils/log";
+import { Chess } from "chess.js";
+
+export class StockfishService {
+  private engine;
+  private listeners: ((line: string) => void)[] = [];
+
+  constructor() {
+    this.engine = spawn("stockfish");
+    this.engine.stdout.on("data", (data) => {
+      const lines = data.toString().split("\n").filter(Boolean);
+      for (const line of lines) {
+        this.listeners.forEach((cb) => cb(line));
+      }
+    });
+
+    this.send("uci");
+    logger.info("[BotService] Stockfish started");
+  }
+
+  private send(cmd: string) {
+    this.engine.stdin.write(cmd + "\n");
+  }
+
+  async getBestMove(fen: string, depth = 12): Promise<string> {
+    return new Promise((resolve) => {
+      const handler = (line: string) => {
+        if (line.startsWith("bestmove")) {
+          const move = line.split(" ")[1];
+          this.listeners = this.listeners.filter((cb) => cb !== handler);
+          resolve(move);
+        }
+      };
+      this.listeners.push(handler);
+
+      this.send(`position fen ${fen}`);
+      this.send(`go depth ${depth}`);
+    });
+  }
+
+  /**
+   * Анализирует позицию и возвращает "сырые" данные движка
+   */
+  async getEvaluation(fen: string, depth = 12): Promise<{ type: "cp" | "mate"; value: number }> {
+    return new Promise((resolve) => {
+      const handler = (line: string) => {
+        if (line.includes("score")) {
+          const matchCp = line.match(/score cp (-?\d+)/);
+          const matchMate = line.match(/score mate (-?\d+)/);
+
+          if (matchMate) {
+            this.listeners = this.listeners.filter((cb) => cb !== handler);
+            resolve({ type: "mate", value: parseInt(matchMate[1], 10) });
+          } else if (matchCp) {
+            this.listeners = this.listeners.filter((cb) => cb !== handler);
+            resolve({ type: "cp", value: parseInt(matchCp[1], 10) });
+          }
+        }
+      };
+      this.listeners.push(handler);
+
+      this.send(`position fen ${fen}`);
+      this.send(`go depth ${depth}`);
+    });
+  }
+
+  /**
+   * Дает "человеческий" комментарий по позиции
+   */
+  async getComment(fen: string, depth = 12): Promise<string> {
+    const evalResult = await this.getEvaluation(fen, depth);
+
+    if (evalResult.type === "mate") {
+      if (evalResult.value > 0) return `White checkmates in ${evalResult.value} move(s)!`;
+      else return `Black checkmates in ${Math.abs(evalResult.value)} move(s)!`;
+    }
+
+    const cp = evalResult.value;
+    if (cp > 300) return "White has a big advantage.";
+    if (cp > 100) return "The white ones are a little better.";
+    if (cp > -100) return "The position is approximately equal.";
+    if (cp > -300) return "Black has a slight advantage.";
+    return "Black has a big advantage.";
+  }
+
+  /**
+   * Оценка сделанного хода vs лучший ход
+   */
+  async analyzeMove(fen: string, from: string, to: string, depth = 12): Promise<string> {
+    const chess = new Chess(fen);
+    const move = `${from}${to}`;
+
+    const evalBefore = await this.getEvaluation(fen, depth);
+
+    const bestMove = await this.getBestMove(fen, depth);
+
+    if (!chess.move(move)) {
+      return `The move ${move} is invalid in this position.`;
+    }
+    const newFen = chess.fen();
+
+    const evalAfter = await this.getEvaluation(newFen, depth);
+
+    let comment = "";
+    if (evalAfter.type === "mate") {
+      if (evalAfter.value > 0) comment = "Excellent! White checkmates.";
+      else comment = "Bad: Black gets forced checkmate.";
+    } else {
+      const diff = (evalAfter.value - evalBefore.value);
+
+      if (move === bestMove) {
+        comment = `Great move! This matches the engine's recommendation (${bestMove}).`;
+      } else if (diff > -50) {
+        comment = `The move ${move} is quite normal, but the engine preferred ${bestMove}.`;
+      } else if (diff > -200) {
+        comment = `Move ${move} weakened the position. It was better to play ${bestMove}.`;
+      } else {
+        comment = `The move ${move} is a serious mistake! The position is much worse after it. The engine advised ${bestMove}.`;
+      }
+    }
+
+    return comment;
+  }
+}
