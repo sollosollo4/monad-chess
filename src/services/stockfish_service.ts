@@ -87,7 +87,7 @@ export class StockfishService {
   /**
    * Оценка сделанного хода vs лучший ход
    */
-  async analyzeMove(fen: string, from: string, to: string, depth = 12): Promise<string> {
+  async analyzeMove(fen: string, from: string, to: string, depth = 12): Promise<{comment: string, bestMove: string}> {
     const chess = new Chess(fen);
     const move = `${from}${to}`;
 
@@ -96,7 +96,7 @@ export class StockfishService {
     const bestMove = await this.getBestMove(fen, depth);
 
     if (!chess.move(move)) {
-      return `The move ${move} is invalid in this position.`;
+      throw new Error(`The move ${move} is invalid in this position.`)
     }
     const newFen = chess.fen();
 
@@ -120,6 +120,6 @@ export class StockfishService {
       }
     }
 
-    return comment;
+    return { comment, bestMove };
   }
 }
