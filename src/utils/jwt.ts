@@ -1,8 +1,9 @@
 import jwt from 'jsonwebtoken';
+import { ENV } from '../config/env';
 
 // Можно вынести секреты в .env
-const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'your-access-secret';
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
+const ACCESS_SECRET = ENV.jwt_secret || 'your-access-secret';
+const REFRESH_SECRET = ENV.jwt_refresh_secret || 'your-refresh-secret';
 
 // Генерация access token
 export function generateAccessToken(user: { userId: number }): string {

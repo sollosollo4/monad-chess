@@ -14,7 +14,7 @@ export class User {
   @Column({ unique: true })
   username!: string;
 
-  @Column({ unique: true })
+  @Column()
   monad_games_id!: boolean;
 
   @OneToMany(() => LinkedWallet, (wallet) => wallet.user, { cascade: true })

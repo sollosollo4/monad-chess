@@ -20,6 +20,7 @@ export const ENV = {
   stage: process.env.NODE_ENV || 'local',
   api_port: Number(process.env.PORT) || 3000,
   jwt_secret: process.env.JWT_SECRET || 'JWT_SECRET',
+  jwt_refresh_secret: process.env.JWT_REFRESH_SECRET || 'JWT_REFRESH_SECRET',
   database: {
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),
