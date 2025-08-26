@@ -84,6 +84,20 @@ class LlmPuzzleService {
       tone: success ? "celebrate" : "consolate",
     };
   }
+
+  async puzzleInstruction(themes: string[]): Promise<PuzzleMessage> {
+    const joined = themes.join(", ");
+    const prompt = `У тебя есть шахматный паззл с темами: [${joined}]. 
+      Твоя задача: объясни игроку КОРОТКО, что здесь нужно сделать 
+      (например: "Найди мат в два хода", "Обрати внимание на связку", "Сыграй на преимущество пешки").
+      Пиши дружелюбно, 1–2 предложения. 
+      Верни JSON { "text": "...", "tone": "neutral" }.`;
+
+    return (await this.askLLM(prompt)) ?? {
+      text: "Попробуй найти сильный тактический приём в этой позиции.",
+      tone: "neutral",
+    };
+  }
 }
 
 export default new LlmPuzzleService("https://api.openai.com/v1", ENV.llm_api_key, "gpt-4o-mini");

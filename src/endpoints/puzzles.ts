@@ -57,11 +57,13 @@ router.get(
       return res.status(404).json({ error: "No puzzle found in range" });
     }
 
-    const greeting = await LlmPuzzleService.greetPlayer(req.user?.username);
+    let instruction;
+    if(puzzle.themes)
+      instruction = await LlmPuzzleService.puzzleInstruction(puzzle.themes);
 
     return res.json({
       puzzle,
-      greeting
+      instruction
     });
   }
 );
