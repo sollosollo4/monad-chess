@@ -15,6 +15,7 @@ import { responseWrapper } from "./middleware/responseWrapper";
 import { requestLogger } from "./middleware/requestLogger";
 import { ENV } from "./config/env";
 import { connectRabbit } from "./rabbitmq/client";
+import { startConsumer } from "./consumer/consumer";
 
 const app = express();
 
@@ -39,7 +40,7 @@ app.use("/api/profile", profileRouter);
 
 export const startApp = async () => {
   await initDb();
-  await connectRabbit();
+  await startConsumer();
   WebSocketService.start();
 };
 
