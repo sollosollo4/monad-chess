@@ -2,6 +2,13 @@ import { spawn } from "child_process";
 import { logger } from "../utils/log";
 import { Chess } from "chess.js";
 
+type Severity =
+  | "brilliant"
+  | "great"
+  | "good"
+  | "inaccuracy"
+  | "mistake"
+  | "blunder";
 class StockfishService {
   private engine;
   private listeners: ((line: string) => void)[] = [];
@@ -42,19 +49,24 @@ class StockfishService {
   /**
    * Анализирует позицию и возвращает "сырые" данные движка
    */
-  async getEvaluation(fen: string, depth = 12): Promise<{ type: "cp" | "mate"; value: number }> {
+  async getEvaluation(
+    fen: string,
+    depth = 12
+  ): Promise<{ type: "cp" | "mate"; value: number; pv: string[] }> {
     return new Promise((resolve) => {
       const handler = (line: string) => {
-        if (line.includes("score")) {
+        if (line.startsWith("info") && line.includes("score")) {
           const matchCp = line.match(/score cp (-?\d+)/);
           const matchMate = line.match(/score mate (-?\d+)/);
+          const matchPv = line.match(/ pv (.+)$/);
+          const pv = matchPv ? matchPv[1].trim().split(" ") : [];
 
           if (matchMate) {
             this.listeners = this.listeners.filter((cb) => cb !== handler);
-            resolve({ type: "mate", value: parseInt(matchMate[1], 10) });
+            resolve({ type: "mate", value: parseInt(matchMate[1], 10), pv });
           } else if (matchCp) {
             this.listeners = this.listeners.filter((cb) => cb !== handler);
-            resolve({ type: "cp", value: parseInt(matchCp[1], 10) });
+            resolve({ type: "cp", value: parseInt(matchCp[1], 10), pv });
           }
         }
       };
@@ -72,7 +84,8 @@ class StockfishService {
     const evalResult = await this.getEvaluation(fen, depth);
 
     if (evalResult.type === "mate") {
-      if (evalResult.value > 0) return `White checkmates in ${evalResult.value} move(s)!`;
+      if (evalResult.value > 0)
+        return `White checkmates in ${evalResult.value} move(s)!`;
       else return `Black checkmates in ${Math.abs(evalResult.value)} move(s)!`;
     }
 
@@ -87,7 +100,12 @@ class StockfishService {
   /**
    * Оценка сделанного хода vs лучший ход
    */
-  async analyzeMove(fen: string, from: string, to: string, depth = 12): Promise<{comment: string, bestMove: string}> {
+  async analyzeMove(
+    fen: string,
+    from: string,
+    to: string,
+    depth = 12
+  ): Promise<{ comment: string; bestMove: string }> {
     const chess = new Chess(fen);
     const move = `${from}${to}`;
 
@@ -96,7 +114,7 @@ class StockfishService {
     const bestMove = await this.getBestMove(fen, depth);
 
     if (!chess.move(move)) {
-      throw new Error(`The move ${move} is invalid in this position.`)
+      throw new Error(`The move ${move} is invalid in this position.`);
     }
     const newFen = chess.fen();
 
@@ -107,7 +125,7 @@ class StockfishService {
       if (evalAfter.value > 0) comment = "Excellent! White checkmates.";
       else comment = "Bad: Black gets forced checkmate.";
     } else {
-      const diff = (evalAfter.value - evalBefore.value);
+      const diff = evalAfter.value - evalBefore.value;
 
       if (move === bestMove) {
         comment = `Great move! This matches the engine's recommendation (${bestMove}).`;
@@ -121,6 +139,55 @@ class StockfishService {
     }
 
     return { comment, bestMove };
+  }
+
+  async analyzeMoveDetailed(
+    fenBefore: string,
+    move: string,
+    depth = 12
+  ): Promise<{
+    fenAfter: string;
+    evalBeforeCp: number | null;
+    evalAfterCp: number | null;
+    bestMove: string | null;
+    severity:
+      | "brilliant"
+      | "great"
+      | "good"
+      | "inaccuracy"
+      | "mistake"
+      | "blunder";
+    pv: string[];
+  }> {
+    const chess = new Chess(fenBefore);
+    const evalBefore = await this.getEvaluation(fenBefore, depth);
+
+    const bestMove = await this.getBestMove(fenBefore, depth);
+
+    if (!chess.move(move)) {
+      throw new Error(`Invalid move: ${move}`);
+    }
+
+    const fenAfter = chess.fen();
+    const evalAfter = await this.getEvaluation(fenAfter, depth);
+
+    const diff = (evalAfter.value ?? 0) - (evalBefore.value ?? 0);
+
+    let severity: Severity = "good";
+    if (diff > -30 && move === bestMove) severity = "brilliant";
+    else if (diff > -50) severity = "great";
+    else if (diff > -150) severity = "inaccuracy";
+    else if (diff > -300) severity = "mistake";
+    else severity = "blunder";
+
+    return {
+      fenAfter,
+      evalBeforeCp: evalBefore.type === "cp" ? evalBefore.value : null,
+      evalAfterCp: evalAfter.type === "cp" ? evalAfter.value : null,
+      bestMove,
+      severity,
+      pv: [], // сюда позже можно парсить principal variation из вывода Stockfish
+    };
   }
 }
 

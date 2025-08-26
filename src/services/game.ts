@@ -6,6 +6,7 @@ import { Room } from "../entity/Room";
 import { RoomService } from "./room_game";
 import  StockfishService  from "./stockfish_service";
 import { logger } from "../utils/log";
+import { sendEvent } from "../rabbitmq/client";
 
 export class TimeoutError extends Error {
   winner;
@@ -133,7 +134,6 @@ export class GameService {
   async makeMove(game: Game, username: string, msg: any) {
     const chess = new Chess(game.fen);
 
-    // проверка чей ход
     const sideToMove = chess.turn() === "w" ? "white" : "black";
     const expectedUsername = sideToMove === "white" ? game.white : game.black;
 
@@ -160,6 +160,17 @@ export class GameService {
         }
       }
     }
+
+    await sendEvent({ 
+      before_fen: game.fen, 
+      from: msg.from, 
+      to: msg.to, 
+      promotion: msg.promotion, 
+      gameId: game.id, 
+      username, 
+      sideToMove
+    });
+
     const move = chess.move({
       from: msg.from,
       to: msg.to,

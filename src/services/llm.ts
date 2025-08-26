@@ -1,6 +1,7 @@
 import { z } from "zod";
 import fetch from "node-fetch";
 import { buildCommentaryPrompt } from "./prompts/llm_commentary";
+import { ENV } from "../config/env";
 
 const CommentarySchema = z.object({
   short: z.string(),
@@ -10,11 +11,11 @@ const CommentarySchema = z.object({
 });
 export type Commentary = z.infer<typeof CommentarySchema>;
 
-export class LlmCommentaryService {
+class LlmCommentaryService {
   constructor(
-    private apiBase = process.env.LLM_API_BASE || "https://api.openai.com/v1",
-    private apiKey = process.env.LLM_API_KEY || "",
-    private model = process.env.LLM_MODEL || "gpt-4o-mini"
+    private apiBase: string,
+    private apiKey: string,
+    private model: string,
   ) {}
 
   private async askLLM(prompt: string): Promise<Commentary | null> {
@@ -72,3 +73,5 @@ export class LlmCommentaryService {
     return { short, hint: "", tone, tags: [] };
   }
 }
+
+export default new LlmCommentaryService("https://api.openai.com/v1", ENV.llm_api_key, "gpt-4o-mini")

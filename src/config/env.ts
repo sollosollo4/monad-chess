@@ -37,4 +37,5 @@ export const ENV = {
     port: parseInt(process.env.WEBSOCKET_PORT || '9870') || 9870,
   },
   rabbitmq_host: process.env.RABBITMQ_URL || 'amqp://rabbitmq',
+  llm_api_key: process.env.LLM_API_KEY || '',
 };
