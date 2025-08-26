@@ -8,12 +8,13 @@ import {
   optionalAuthMiddleware,
 } from "../middleware/auth_optional";
 import { User } from "../entity/User";
+import { checkJwt } from "../middleware/auth";
 
 const router = express.Router();
 
 router.get(
   "/random",
-  optionalAuthMiddleware,
+  checkJwt,
   async (req: AuthRequest, res: Response) => {
     const puzzleRepo = AppDataSource.getRepository(Puzzle);
     let min = 0;
@@ -52,7 +53,7 @@ router.get(
   }
 );
 
-router.post("/check", optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
+router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
   const { id, move, step } = req.body;
   let new_rating = 0;
