@@ -10,6 +10,7 @@ import fs from "fs";
 import { parse } from "csv-parse";
 import path from "path";
 import { logger } from "../utils/log";
+import { MoveAnalysis } from "../entity/MoveAnalysis";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -18,7 +19,7 @@ export const AppDataSource = new DataSource({
   username: ENV.database.username,
   password: ENV.database.password,
   database: ENV.database.database,
-  entities: [User, Game, Room, Move, LinkedWallet, Puzzle],
+  entities: [User, Game, Room, Move, LinkedWallet, Puzzle, MoveAnalysis],
   synchronize: true, // В проде false и миграции
 });
 

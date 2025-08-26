@@ -13,7 +13,7 @@ class AnalyzeService {
     const { before_fen, from, to, promotion, gameId, username, sideToMove } = event;
 
     const move = `${from}${to}${promotion ?? ""}`;
-    const analysis = await StockfishService.analyzeMoveDetailed(before_fen, move);
+    const analysis = await StockfishService.analyzeMoveDetailed(before_fen, from, to, promotion);
 
     const commentary = await LlmCommentaryService.buildCommentary({
       language: "ru",

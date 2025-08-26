@@ -143,7 +143,9 @@ class StockfishService {
 
   async analyzeMoveDetailed(
     fenBefore: string,
-    move: string,
+    from: string, 
+    to: string,
+    promotion: string,
     depth = 12
   ): Promise<{
     fenAfter: string;
@@ -164,7 +166,8 @@ class StockfishService {
 
     const bestMove = await this.getBestMove(fenBefore, depth);
 
-    if (!chess.move(move)) {
+    const move = `${from}${to}${promotion ?? ""}`;
+    if (!chess.move({from, to, promotion})) {
       throw new Error(`Invalid move: ${move}`);
     }
 
@@ -186,7 +189,7 @@ class StockfishService {
       evalAfterCp: evalAfter.type === "cp" ? evalAfter.value : null,
       bestMove,
       severity,
-      pv: [], // сюда позже можно парсить principal variation из вывода Stockfish
+      pv: evalBefore.pv,
     };
   }
 }
