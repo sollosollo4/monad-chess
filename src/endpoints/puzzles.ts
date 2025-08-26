@@ -9,8 +9,16 @@ import {
 } from "../middleware/auth_optional";
 import { User } from "../entity/User";
 import { checkJwt } from "../middleware/auth";
+import LlmPuzzleService from "../services/llm_puzzle_service";
 
 const router = express.Router();
+
+router.get('/greetings', checkJwt, async(req: AuthRequest, res: Response) => {
+  const greeting = await LlmPuzzleService.greetPlayer(req.user?.username);
+  return res.json({
+    greeting
+  });
+});
 
 router.get(
   "/random",
@@ -49,7 +57,12 @@ router.get(
       return res.status(404).json({ error: "No puzzle found in range" });
     }
 
-    return res.json(puzzle);
+    const greeting = await LlmPuzzleService.greetPlayer(req.user?.username);
+
+    return res.json({
+      puzzle,
+      greeting
+    });
   }
 );
 
@@ -119,8 +132,18 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
     const finished = step + 1 === puzzle.solution.length;
     const nextMove = finished ? null : puzzle.solution[step + 1];
 
+    const commentary = await LlmPuzzleService.moveComment(
+      move === expectedMove,
+      move,
+      step,
+      puzzle.solution.length
+    );
+
+    let finalMsg;
+
     if (finished && req.user?.userId) {
       new_rating = await updateRating(req.user?.userId, 10);
+      finalMsg = await LlmPuzzleService.finishPuzzle(finished && move === expectedMove, puzzle.solution.length);
     }
 
     return res.json({
@@ -128,7 +151,10 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
       finished,
       nextMove,
       new_rating,
-      rating_change: 10
+      rating_change: 10,
+
+      commentary,
+      finalMsg
     });
   } catch (err) {
     return res.status(500).json({
