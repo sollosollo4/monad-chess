@@ -72,6 +72,7 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
   const { id, move, step } = req.body;
   let new_rating = 0;
+  let finalMsg;
 
   if (!id || !move || typeof step !== "number") {
     return res.status(400).json({ error: "id, move and step are required" });
@@ -115,6 +116,13 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
     const promotion = move.length === 5 ? move[4] : undefined;
 
     const applied = chess.move({ from, to, promotion });
+
+     const commentary = await LlmPuzzleService.moveComment(
+      move === expectedMove,
+      move,
+      step,
+      puzzle.solution.length
+    );
     if (!applied) {
       if (req.user?.userId) {
         new_rating = await updateRating(req.user?.userId, -2);
@@ -127,21 +135,17 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
         got: move,
         message: "Illegal move",
         new_rating,
-        rating_change: -2
+        rating_change: -2,
+
+        commentary,
+        finalMsg
       });
     }
 
     const finished = step + 1 === puzzle.solution.length;
     const nextMove = finished ? null : puzzle.solution[step + 1];
 
-    const commentary = await LlmPuzzleService.moveComment(
-      move === expectedMove,
-      move,
-      step,
-      puzzle.solution.length
-    );
-
-    let finalMsg;
+    
 
     if (finished && req.user?.userId) {
       new_rating = await updateRating(req.user?.userId, 10);
