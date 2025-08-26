@@ -95,6 +95,13 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
     }
 
     const expectedMove = puzzle.solution[step];
+
+    const commentary = await LlmPuzzleService.moveComment(
+      move === expectedMove,
+      move,
+      step,
+      puzzle.solution.length
+    );
     if (move !== expectedMove) {
       if(req.user?.userId) {
         new_rating = await updateRating(req.user?.userId, -2);
@@ -107,7 +114,10 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
         got: move,
         message: "Wrong move at this step",
         new_rating,
-        rating_change: -2
+        rating_change: -2,
+
+        commentary,
+        finalMsg
       });
     }
 
@@ -116,13 +126,6 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
     const promotion = move.length === 5 ? move[4] : undefined;
 
     const applied = chess.move({ from, to, promotion });
-
-     const commentary = await LlmPuzzleService.moveComment(
-      move === expectedMove,
-      move,
-      step,
-      puzzle.solution.length
-    );
     if (!applied) {
       if (req.user?.userId) {
         new_rating = await updateRating(req.user?.userId, -2);
