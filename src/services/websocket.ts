@@ -4,7 +4,7 @@ import { AuthService } from "../services/auth_game";
 import { GameService, TimeoutError } from "../services/game";
 import { RoomService } from "../services/room_game";
 import { logger } from "../utils/log";
-import { StockfishService } from "./stockfish_service";
+import StockfishService from "./stockfish_service";
 
 interface IWebSocketServiceOptions {
   port?: number;
@@ -88,7 +88,6 @@ export class WebSocketService {
 
   private async handleMove(ws: WebSocket, msg: any) {
     try {
-      const stockfishService = new StockfishService();
       const username = (ws as any).username;
       const roomCode = (ws as any).room;
       if (!username || !roomCode) throw new Error("Not authenticated");
@@ -120,7 +119,7 @@ export class WebSocketService {
           : null;
       if (botSide && chess.turn() === (botSide === "white" ? "w" : "b")) {
         
-        const bestMove = await stockfishService.getBestMove(updated.fen, 12);
+        const bestMove = await StockfishService.getBestMove(updated.fen, 12);
 
         if (bestMove) {
           const botMove = chess.move({

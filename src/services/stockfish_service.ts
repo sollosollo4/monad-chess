@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import { logger } from "../utils/log";
 import { Chess } from "chess.js";
 
-export class StockfishService {
+class StockfishService {
   private engine;
   private listeners: ((line: string) => void)[] = [];
 
@@ -123,3 +123,5 @@ export class StockfishService {
     return { comment, bestMove };
   }
 }
+
+export default new StockfishService();

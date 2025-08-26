@@ -4,7 +4,7 @@ import { Game } from "../entity/Game";
 import { Move } from "../entity/Move";
 import { Room } from "../entity/Room";
 import { RoomService } from "./room_game";
-import { StockfishService } from "./stockfish_service";
+import  StockfishService  from "./stockfish_service";
 import { logger } from "../utils/log";
 
 export class TimeoutError extends Error {
@@ -85,9 +85,8 @@ export class GameService {
 
   async makeBotMove(game: Game, roomCode: string) {
     const chess = new Chess(game.fen);
-    const botService = new StockfishService();
 
-    const best = await botService.getBestMove(chess.fen());
+    const best = await StockfishService.getBestMove(chess.fen());
     if (!best) return;
 
     const move = chess.move({
@@ -132,10 +131,7 @@ export class GameService {
   }
 
   async makeMove(game: Game, username: string, msg: any) {
-    const stockfishService = new StockfishService();
     const chess = new Chess(game.fen);
-
-    //const analyze = await stockfishService.analyzeMove(chess.fen(), msg.from, msg.to, 12);
 
     // проверка чей ход
     const sideToMove = chess.turn() === "w" ? "white" : "black";
