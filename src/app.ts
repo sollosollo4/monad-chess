@@ -14,6 +14,7 @@ import { attachTraceId } from "./middleware/loggerWithTraceId";
 import { responseWrapper } from "./middleware/responseWrapper";
 import { requestLogger } from "./middleware/requestLogger";
 import { ENV } from "./config/env";
+import { connectRabbit } from "./rabbitmq/client";
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/api/profile", profileRouter);
 
 export const startApp = async () => {
   await initDb();
+  await connectRabbit();
   WebSocketService.start();
 };
 
