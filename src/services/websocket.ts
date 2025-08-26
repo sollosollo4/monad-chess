@@ -99,7 +99,6 @@ export class WebSocketService {
         move,
         game: updated,
         chess,
-        analyze,
       } = await this.gameService.makeMove(game, username, msg);
 
       this.roomService.broadcast(roomCode, {
@@ -109,8 +108,6 @@ export class WebSocketService {
         san: move.san,
         fen: updated.fen,
         by: username,
-        comment: await stockfishService.getComment(updated.fen, 12),
-        analyze,
         whiteTime: updated.whiteTime,
         blackTime: updated.blackTime,
       });
@@ -145,8 +142,7 @@ export class WebSocketService {
               to: botMove.to,
               san: botMove.san,
               fen: updatedChess.fen(),
-              by: "BOT",
-              comment: stockfishService.getComment(updatedChess.fen(), 12)
+              by: "BOT"
             });
 
             if (chess.isGameOver()) {

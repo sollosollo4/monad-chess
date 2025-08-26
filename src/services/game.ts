@@ -135,7 +135,7 @@ export class GameService {
     const stockfishService = new StockfishService();
     const chess = new Chess(game.fen);
 
-    const analyze = await stockfishService.analyzeMove(chess.fen(), msg.from, msg.to, 12);
+    //const analyze = await stockfishService.analyzeMove(chess.fen(), msg.from, msg.to, 12);
 
     // проверка чей ход
     const sideToMove = chess.turn() === "w" ? "white" : "black";
@@ -193,7 +193,7 @@ export class GameService {
 
     await this.gameRepo.save(game);
 
-    return { move, game, chess, analyze };
+    return { move, game, chess };
   }
 
   determineResult(chess: Chess) {
