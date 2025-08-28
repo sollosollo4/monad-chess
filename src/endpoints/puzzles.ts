@@ -72,7 +72,6 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
   const { id, move, step } = req.body;
   let new_rating = 0;
-  let finalMsg;
 
   if (!id || !move || typeof step !== "number") {
     return res.status(400).json({ error: "id, move and step are required" });
@@ -96,12 +95,6 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
 
     const expectedMove = puzzle.solution[step];
 
-    const commentary = await LlmPuzzleService.moveComment(
-      move === expectedMove,
-      move,
-      step,
-      puzzle.solution.length
-    );
     if (move !== expectedMove) {
       if(req.user?.userId) {
         new_rating = await updateRating(req.user?.userId, -2);
@@ -114,10 +107,7 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
         got: move,
         message: "Wrong move at this step",
         new_rating,
-        rating_change: -2,
-
-        commentary,
-        finalMsg
+        rating_change: -2
       });
     }
 
@@ -138,10 +128,7 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
         got: move,
         message: "Illegal move",
         new_rating,
-        rating_change: -2,
-
-        commentary,
-        finalMsg
+        rating_change: -2
       });
     }
 
@@ -152,7 +139,6 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
 
     if (finished && req.user?.userId) {
       new_rating = await updateRating(req.user?.userId, 10);
-      finalMsg = await LlmPuzzleService.finishPuzzle(finished && move === expectedMove, puzzle.solution.length);
     }
 
     return res.json({
@@ -160,10 +146,7 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
       finished,
       nextMove,
       new_rating,
-      rating_change: 10,
-
-      commentary,
-      finalMsg
+      rating_change: 10
     });
   } catch (err) {
     return res.status(500).json({
