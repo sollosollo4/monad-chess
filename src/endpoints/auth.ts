@@ -1,10 +1,8 @@
 import express from "express";
-import jwt from "jsonwebtoken";
 import { User } from "../entity/User";
-import { LinkedWallet } from "../entity/LinkedWallet";
+import { LinkedAccount } from "../entity/LinkedAccount";
 import { checkJwt, AuthRequest } from "../middleware/auth";
 import { AppDataSource } from "../config/database";
-import { ENV } from "../config/env";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -15,82 +13,92 @@ const router = express.Router();
 
 router.post("/login-global", async (req, res) => {
   const userRepo = AppDataSource.getRepository(User);
-  const walletRepo = AppDataSource.getRepository(LinkedWallet);
+  const accountRepo = AppDataSource.getRepository(LinkedAccount);
 
   try {
-    const { address, providerAppId } = req.body;
-    if (!address || !providerAppId) {
+    const { provider, providerUserId, providerAppId } = req.body;
+    if (!provider || !providerUserId) {
       return res
         .status(400)
-        .json({ message: "address и providerAppId обязательны" });
+        .json({ message: "provider и providerUserId обязательны" });
     }
 
-    const checkRes = await fetch(
-      `https://monad-games-id-site.vercel.app/api/check-wallet?wallet=${encodeURIComponent(
-        address
-      )}`,
-      { headers: { "Content-Type": "application/json" } }
-    );
-    if (!checkRes.ok) {
-      throw new Error(`Monad ID API error: ${checkRes.status}`);
-    }
-
-    const json = (await checkRes.json()) as {
-      hasUsername: boolean;
-      user: { id: number; username: string; walletAddress: string } | null;
-    };
-
-    const existsAddress = await walletRepo.findOne({
-      where: { address },
+    // Проверяем, есть ли такой аккаунт
+    const existsAccount = await accountRepo.findOne({
+      where: { provider, providerUserId, providerAppId },
       relations: ["user"],
     });
 
-    let user: User | null = null;
-    if (existsAddress) {
-      user = existsAddress.user;
+    let user: User;
+    if (existsAccount) {
+      user = existsAccount.user;
     } else {
-      if (json.hasUsername && json.user) {
-        user = await userRepo.findOne({
-          where: { username: json.user.username },
-          relations: ["wallets"],
-        });
-        if (!user) {
+      // если provider = "wallet" → проверка Monad API (как раньше)
+      if (provider === "wallet") {
+        const checkRes = await fetch(
+          `https://monad-games-id-site.vercel.app/api/check-wallet?wallet=${encodeURIComponent(
+            providerUserId
+          )}`,
+          { headers: { "Content-Type": "application/json" } }
+        );
+        if (!checkRes.ok) {
+          throw new Error(`Monad ID API error: ${checkRes.status}`);
+        }
+
+        const json = await checkRes.json();
+
+        if (json.hasUsername && json.user) {
+          const tryGetUser = await userRepo.findOne({
+            where: { username: json.user.username },
+            relations: ["accounts"],
+          });
+          if (!tryGetUser) {
+            user = userRepo.create({
+              username: json.user.username,
+              monad_games_id: true,
+            });
+            await userRepo.save(user);
+          } else {
+            user = tryGetUser;
+          }
+        } else {
+          const last = await userRepo
+            .createQueryBuilder("u")
+            .orderBy("u.id", "DESC")
+            .getOne();
+          const newId = last ? last.id + 1 : 1;
           user = userRepo.create({
-            username: json.user.username,
-            monad_games_id: true,
+            username: `MonadChessUser${newId.toString().padStart(4, "0")}`,
+            monad_games_id: false,
           });
           await userRepo.save(user);
         }
       } else {
+        // для соцсетей создаём нового пользователя
         const last = await userRepo
           .createQueryBuilder("u")
           .orderBy("u.id", "DESC")
           .getOne();
         const newId = last ? last.id + 1 : 1;
         user = userRepo.create({
-          username: `MonadChessUser${newId.toString().padStart(4, "0")}`,
+          username: `${provider}_user${newId.toString().padStart(4, "0")}`,
           monad_games_id: false,
         });
         await userRepo.save(user);
       }
+
+      // создаём связь
+      const account = accountRepo.create({
+        provider,
+        providerUserId,
+        providerAppId,
+        user,
+      });
+      await accountRepo.save(account);
     }
-    const existsWallet = await walletRepo.findOne({
-      where: { address, providerAppId },
-      relations: ["user"],
-    });
 
-    if (!existsWallet) {
-      const wallet = walletRepo.create({ address, providerAppId, user });
-      await walletRepo.save(wallet);
-    }
-
-    const token = generateAccessToken({
-      userId: user.id,
-    });
-
-    const refreshToken = generateRefreshToken({
-      userId: user.id,
-    });
+    const token = generateAccessToken({ userId: user.id });
+    const refreshToken = generateRefreshToken({ userId: user.id });
 
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
@@ -104,7 +112,7 @@ router.post("/login-global", async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        wallets: user.wallets,
+        accounts: user.accounts,
         monad_games_id: user.monad_games_id,
         rating: user.rating,
         puzzle_rating: user.puzzleRating,
@@ -146,30 +154,35 @@ router.post("/refresh", async (req, res) => {
   }
 });
 
-router.post("/link-wallet", checkJwt, async (req: AuthRequest, res) => {
-  const { address, providerAppId } = req.body;
+router.post("/link-account", checkJwt, async (req: AuthRequest, res) => {
+  const { provider, providerUserId, providerAppId } = req.body;
   const userId = req.user.userId!;
   const userRepo = AppDataSource.getRepository(User);
-  const walletRepo = AppDataSource.getRepository(LinkedWallet);
+  const accountRepo = AppDataSource.getRepository(LinkedAccount);
 
   const user = await userRepo.findOne({
     where: { id: userId },
-    relations: ["wallets"],
+    relations: ["accounts"],
   });
   if (!user) return res.status(404).json({ message: "User not found" });
 
   if (
-    user.wallets.some(
-      (w) => w.address === address && w.providerAppId === providerAppId
+    user.accounts.some(
+      (a) => a.provider === provider && a.providerUserId === providerUserId
     )
   ) {
     return res.json({ message: "Already linked" });
   }
 
-  const wallet = walletRepo.create({ address, providerAppId, user });
-  await walletRepo.save(wallet);
+  const account = accountRepo.create({
+    provider,
+    providerUserId,
+    providerAppId,
+    user,
+  });
+  await accountRepo.save(account);
 
-  res.json({ message: "Wallet linked", wallets: user.wallets.concat(wallet) });
+  res.json({ message: "Account linked", accounts: user.accounts ?? [] });
 });
 
 export default router;

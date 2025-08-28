@@ -4,7 +4,7 @@ import {
   Column,
   OneToMany,
 } from "typeorm";
-import { LinkedWallet } from "./LinkedWallet";
+import { LinkedAccount } from "./LinkedAccount";
 
 @Entity()
 export class User {
@@ -17,8 +17,8 @@ export class User {
   @Column()
   monad_games_id!: boolean;
 
-  @OneToMany(() => LinkedWallet, (wallet) => wallet.user, { cascade: true })
-  wallets!: LinkedWallet[];
+  @OneToMany(() => LinkedAccount, (account) => account.user, { cascade: true })
+  accounts!: LinkedAccount[];
 
   @Column({ type: "int", default: 1200 })
   rating!: number;

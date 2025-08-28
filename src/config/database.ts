@@ -1,7 +1,7 @@
 import { DataSource } from "typeorm";
 import { ENV } from "../config/env";
 import { User } from "../entity/User";
-import { LinkedWallet } from "../entity/LinkedWallet";
+import { LinkedAccount } from "../entity/LinkedAccount";
 import { Game } from "../entity/Game";
 import { Room } from "../entity/Room";
 import { Move } from "../entity/Move";
@@ -28,7 +28,7 @@ export const AppDataSource = new DataSource({
     Room,
     Move,
     Bot,
-    LinkedWallet,
+    LinkedAccount,
     Puzzle,
     MoveAnalysis,
     UserGameResult,

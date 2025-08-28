@@ -8,9 +8,15 @@ import {
 import { User } from "./User";
 
 @Entity()
-export class LinkedWallet {
+export class LinkedAccount {
   @PrimaryGeneratedColumn()
   id!: number;
+
+  @Column()
+  provider!: string; // "wallet" | "twitter" | "discord" | ...
+
+  @Column()
+  providerUserId!: string; // адрес кошелька, twitterId, discordId и т.д.
 
   @Column()
   address!: string;
@@ -18,6 +24,6 @@ export class LinkedWallet {
   @Column()
   providerAppId!: string;
 
-  @ManyToOne(() => User, (user) => user.wallets, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, (user) => user.accounts, { onDelete: "CASCADE" })
   user!: User;
 }
