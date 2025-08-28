@@ -4,6 +4,9 @@ import { AppDataSource } from "../config/database";
 import { optionalAuthMiddleware } from "../middleware/auth_optional";
 import { AuthRequest } from "../middleware/auth";
 import { User } from "../entity/User";
+import { MoveAnalysis } from "../entity/MoveAnalysis";
+import { Move } from "../entity/Move";
+import { Game } from "../entity/Game";
 
 const router = Router();
 
@@ -54,6 +57,55 @@ router.get("/:code", async (req, res) => {
   const room = await repo.findOne({ where: { code: req.params.code } });
   if (!room) return res.status(404).json({ error: "not found" });
   res.json({ id: room.id, code: room.code, name: room.name });
+});
+
+router.get("/analyze/:code", async(req, res) => {
+  try {
+    const roomRepo = AppDataSource.getRepository(Room);
+
+    const room = await roomRepo.findOne({
+      where: { code: req.params.code },
+    });
+
+    if (!room) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    // достаём игру
+    const gameRepo = AppDataSource.getRepository(Game);
+    const game = await gameRepo.findOne({
+      where: { room: { id: room.id } },
+    });
+
+    if (!game) {
+      return res.status(404).json({ error: "Game not found" });
+    }
+
+    // достаём ходы
+    const moveRepo = AppDataSource.getRepository(Move);
+    const moves = await moveRepo.find({
+      where: { game: { id: game.id } },
+      order: { createdAt: "ASC" },
+    });
+
+    // достаём анализ ходов
+    const analysisRepo = AppDataSource.getRepository(MoveAnalysis);
+    const analyses = await analysisRepo.find({
+      where: { game: { id: game.id } },
+      order: { createdAt: "ASC" },
+    });
+
+    // удобно склеим в ответ
+    return res.json({
+      room,
+      game,
+      moves,
+      analyses,
+    });
+  } catch (err) {
+    console.error("Analyze error", err);
+    return res.status(500).json({ error: "Internal error" });
+  }
 });
 
 export default router;
