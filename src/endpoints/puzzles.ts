@@ -55,13 +55,8 @@ router.get("/random", checkJwt, async (req: AuthRequest, res: Response) => {
     return res.status(404).json({ error: "No puzzle found in range" });
   }
 
-  let instruction;
-  if (puzzle.themes)
-    instruction = await LlmPuzzleService.puzzleInstruction(puzzle.themes);
-
   return res.json({
-    puzzle,
-    instruction,
+    puzzle
   });
 });
 

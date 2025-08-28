@@ -27,7 +27,11 @@ class LlmPuzzleService {
           model: this.model,
           temperature: 0.8, // чуть больше креатива, чтобы приветствия и концовки были разнообразнее
           messages: [
-            { role: "system", content: "Ты шахматный тренер, который говорит дружелюбно и кратко." },
+            {
+              role: "system",
+              content:
+                "Ты шахматный тренер, который говорит дружелюбно и кратко.",
+            },
             { role: "user", content: prompt },
           ],
           response_format: { type: "json_object" },
@@ -40,7 +44,7 @@ class LlmPuzzleService {
         throw new Error(`LLM error ${res.status}: ${text}`);
       }
 
-      const data = await res.json() as any;
+      const data = (await res.json()) as any;
       const content = data.choices?.[0]?.message?.content || "{}";
       const parsed = PuzzleMessageSchema.safeParse(JSON.parse(content));
       return parsed.success ? parsed.data : null;
@@ -55,23 +59,51 @@ class LlmPuzzleService {
       Будь дружелюбным. Используй crypto мемы и приколы, представляйся так будто ты один из маскотов экосистемы Monad: Molandak.
       Твои друзья: Mokadei (слизнячок), Chog (ёжик), Salmonad (рыбка), Mosferatu (страшная лягушка), Banana Chog (кото банан), Mouch (муха цикатуха).
       Верни JSON вида { "text": "...", "tone": "encourage" }`;
-    return (await this.askLLM(prompt)) ?? { text: "Удачи в этом паззле!", tone: "encourage" };
+    return (
+      (await this.askLLM(prompt)) ?? {
+        text: "Удачи в этом паззле!",
+        tone: "encourage",
+      }
+    );
   }
 
-  async moveComment(isCorrect: boolean, move: string, step: number, total: number): Promise<PuzzleMessage> {
-    const prompt = isCorrect
-      ? `Скажи короткий комментарий к правильному ходу ${move} на шаге ${step+1} из ${total}. 
-        Если ход был решающим, то вместо комментария поздравь игрока, который успешно решил шахматный паззл. 
-        Поздравления можно соединить с crypto мемами и приколами, поздравь так, как будто ты один из маскотов экосистемы Monad: Molandak.
+  async moveComment(
+    isCorrect: boolean,
+    move: string,
+    step: number,
+    total: number
+  ): Promise<PuzzleMessage> {
+    const coin = Math.random() < 0.5;
+    let prompt: string;
+    if (isCorrect) {
+      if (coin) {
+        // Доброе/дружелюбное
+        prompt = `Ты один из маскотов экосистемы Monad: Molandak.
         Твои друзья: Mokadei (слизнячок), Chog (ёжик), Salmonad (рыбка), Mosferatu (страшная лягушка), Banana Chog (кото банан), Mouch (муха цикатуха).
-        Тон — encourage. Верни JSON { "text": "...", "tone": "encourage" }`
-      : `Скажи короткий комментарий к ошибочному ходу ${move} на шаге ${step+1} из ${total}. 
-        Тон — warn. Верни JSON { "text": "...", "tone": "warn" }`;
+        Тебя засунули на сайт с шахматами, чтобы ты был  ассистентом, и помогал с ходами пользователей. 
+        Скажи короткий комментарий к правильному ходу ${move} на шаге ${step + 1} из ${total}.
+        Если ход был решающим, то вместо комментария поздравь игрока, который успешно решил шахматный паззл. 
+        Поздравления можно соединить с crypto мемами и приколами.
+        Тон — encourage. Верни JSON { "text": "...", "tone": "encourage" }`;
+      } else {
+        // “Прикол, усталость, сарказм”
+        prompt = `Ты один из маскотов экосистемы Monad: Molandak. Твои друзья: Mokadei (слизнячок), Chog (ёжик), Salmonad (рыбка), Mosferatu (страшная лягушка), Banana Chog (кото банан), Mouch (муха цикатуха).
+        Тебя засунули на сайт с шахматами, чтобы ты был ассистентом, и помогал с ходами пользователей. Но ты устал устал от веб3 шахматников, сибилов, фармеров НФТшек, можно шутку, сарказм или мем.
+        Тон — encourage, но с иронией. Верни JSON { "text": "...", "tone": "encourage" }`;
+      }
+    } else {
+      prompt = `Скажи короткий комментарий к ошибочному ходу ${move} на шаге ${step + 1} из ${total}.
+      Тон — warn. Верни JSON { "text": "...", "tone": "warn" }`;
+    }
 
-    return (await this.askLLM(prompt)) ?? {
-      text: isCorrect ? "Хорошо! Продолжай." : "Это неточно, попробуй подумать снова.",
-      tone: isCorrect ? "encourage" : "warn",
-    };
+    return (
+      (await this.askLLM(prompt)) ?? {
+        text: isCorrect
+          ? "Хорошо! Продолжай."
+          : "Это неточно, попробуй подумать снова.",
+        tone: isCorrect ? "encourage" : "warn",
+      }
+    );
   }
 
   async puzzleInstruction(themes: string[]): Promise<PuzzleMessage> {
@@ -82,11 +114,17 @@ class LlmPuzzleService {
       Пиши дружелюбно, 1–2 предложения. 
       Верни JSON { "text": "...", "tone": "neutral" }.`;
 
-    return (await this.askLLM(prompt)) ?? {
-      text: "Попробуй найти сильный тактический приём в этой позиции.",
-      tone: "neutral",
-    };
+    return (
+      (await this.askLLM(prompt)) ?? {
+        text: "Попробуй найти сильный тактический приём в этой позиции.",
+        tone: "neutral",
+      }
+    );
   }
 }
 
-export default new LlmPuzzleService("https://api.openai.com/v1", ENV.llm_api_key, "gpt-4o-mini");
+export default new LlmPuzzleService(
+  "https://api.openai.com/v1",
+  ENV.llm_api_key,
+  "gpt-4o-mini"
+);
