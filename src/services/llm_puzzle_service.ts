@@ -49,18 +49,21 @@ class LlmPuzzleService {
     }
   }
 
-  /** 1. Приветствие игрока при начале паззла */
   async greetPlayer(playerName?: string): Promise<PuzzleMessage> {
     const namePart = playerName ? `Игрок ${playerName}` : "друг";
     const prompt = `Придумай короткое и оригинальное приветствие для ${namePart}, который начинает решать шахматный паззл. 
-      Будь дружелюбным. Верни JSON вида { "text": "...", "tone": "encourage" }`;
-    return (await this.askLLM(prompt)) ?? { text: "Удачи в этом паззле! 🚀", tone: "encourage" };
+      Будь дружелюбным. Используй crypto мемы и приколы, представляйся так будто ты один из маскотов экосистемы Monad: Molandak.
+      Твои друзья: Mokadei (слизнячок), Chog (ёжик), Salmonad (рыбка), Mosferatu (страшная лягушка), Banana Chog (кото банан), Mouch (муха цикатуха).
+      Верни JSON вида { "text": "...", "tone": "encourage" }`;
+    return (await this.askLLM(prompt)) ?? { text: "Удачи в этом паззле!", tone: "encourage" };
   }
 
-  /** 2. Комментарий на каждый ход */
   async moveComment(isCorrect: boolean, move: string, step: number, total: number): Promise<PuzzleMessage> {
     const prompt = isCorrect
       ? `Скажи короткий комментарий к правильному ходу ${move} на шаге ${step+1} из ${total}. 
+        Если ход был решающим, то вместо комментария поздравь игрока, который успешно решил шахматный паззл. 
+        Поздравления можно соединить с crypto мемами и приколами, поздравь так, как будто ты один из маскотов экосистемы Monad: Molandak.
+        Твои друзья: Mokadei (слизнячок), Chog (ёжик), Salmonad (рыбка), Mosferatu (страшная лягушка), Banana Chog (кото банан), Mouch (муха цикатуха).
         Тон — encourage. Верни JSON { "text": "...", "tone": "encourage" }`
       : `Скажи короткий комментарий к ошибочному ходу ${move} на шаге ${step+1} из ${total}. 
         Тон — warn. Верни JSON { "text": "...", "tone": "warn" }`;
@@ -68,20 +71,6 @@ class LlmPuzzleService {
     return (await this.askLLM(prompt)) ?? {
       text: isCorrect ? "Хорошо! Продолжай." : "Это неточно, попробуй подумать снова.",
       tone: isCorrect ? "encourage" : "warn",
-    };
-  }
-
-  /** 3. Поздравление или утешение после окончания */
-  async finishPuzzle(success: boolean, moves: number): Promise<PuzzleMessage> {
-    const prompt = success
-      ? `Придумай короткое поздравление игроку, который успешно решил шахматный паззл за ${moves} ходов. 
-        Верни JSON { "text": "...", "tone": "celebrate" }`
-      : `Придумай короткое утешение игроку, который не решил шахматный паззл. 
-        Верни JSON { "text": "...", "tone": "consolate" }`;
-
-    return (await this.askLLM(prompt)) ?? {
-      text: success ? "Отличная работа, паззл решён! 🎉" : "Ничего страшного, попробуешь снова! 💪",
-      tone: success ? "celebrate" : "consolate",
     };
   }
 
