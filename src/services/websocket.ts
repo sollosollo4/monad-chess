@@ -97,10 +97,12 @@ export class WebSocketService {
         puzzle.solution.length
       );
 
-      ws.send(JSON.stringify({
-        type: "puzzle",
-        commentary
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "puzzle",
+          commentary,
+        })
+      );
     } catch (e) {
       ws.send(JSON.stringify({ type: "error", message: (e as Error).message }));
     }
@@ -112,7 +114,7 @@ export class WebSocketService {
       (ws as any).username = user.username;
       this.roomService.joinRoom(ws, msg.room);
 
-      const game = await this.gameService.getOrCreateGame(
+      const getGame = await this.gameService.getOrCreateGame(
         msg.room,
         user.username
       );
@@ -120,17 +122,28 @@ export class WebSocketService {
       ws.send(
         JSON.stringify({
           type: "game_state",
-          fen: game.fen,
-          white: game.white,
-          black: game.black,
+          fen: getGame.game.fen,
+          white: getGame.game.white,
+          black: getGame.game.black,
         })
       );
 
       this.roomService.broadcast(msg.room, {
         type: "players",
-        white: game.white,
-        black: game.black,
+        white: getGame.game.white,
+        black: getGame.game.black,
       });
+
+      if (getGame.game.white == "BOT" && getGame.botMove) {
+        this.roomService.broadcast(msg.room, {
+          type: "move",
+          from: getGame.botMove.from,
+          to: getGame.botMove.to,
+          san: getGame.botMove.san,
+          fen: getGame.botMove.chess.fen(),
+          by: "BOT",
+        });
+      }
     } catch (e) {
       ws.send(JSON.stringify({ type: "error", message: (e as Error).message }));
     }
@@ -142,13 +155,13 @@ export class WebSocketService {
       const roomCode = (ws as any).room;
       if (!username || !roomCode) throw new Error("Not authenticated");
 
-      const game = await this.gameService.getOrCreateGame(roomCode, username);
+      const getGame = await this.gameService.getOrCreateGame(roomCode, username);
 
       const {
         move,
         game: updated,
         chess,
-      } = await this.gameService.makeMove(game, username, msg);
+      } = await this.gameService.makeMove(getGame.game, username, msg);
 
       this.roomService.broadcast(roomCode, {
         type: "move",
@@ -168,42 +181,22 @@ export class WebSocketService {
           ? "black"
           : null;
       if (botSide && chess.turn() === (botSide === "white" ? "w" : "b")) {
-        const bestMove = await StockfishService.getBestMove(updated.fen, 12);
-
-        if (bestMove) {
-          const botMove = chess.move({
-            from: bestMove.slice(0, 2),
-            to: bestMove.slice(2, 4),
-            promotion: "q",
+        const botMove = await this.gameService.makeBotMove(getGame.game);
+        if (botMove) {
+          this.roomService.broadcast(roomCode, {
+            type: "move",
+            from: botMove.from,
+            to: botMove.to,
+            san: botMove.san,
+            fen: botMove.chess.fen(),
+            by: "BOT",
           });
-
-          if (botMove) {
-            const { chess: updatedChess } = await this.gameService.makeMove(
-              updated,
-              "BOT",
-              {
-                from: botMove.from,
-                to: botMove.to,
-                promotion: "q",
-              }
-            );
-
-            this.roomService.broadcast(roomCode, {
-              type: "move",
-              from: botMove.from,
-              to: botMove.to,
-              san: botMove.san,
-              fen: updatedChess.fen(),
-              by: "BOT",
-            });
-
-            if (chess.isGameOver()) {
-              this.roomService.broadcast(roomCode, {
-                type: "game_over",
-                result: this.gameService.determineResult(chess),
-              });
-            }
-          }
+        }
+        if (!getGame.game.active) {
+          this.roomService.broadcast(roomCode, {
+            type: "game_over",
+            result: this.gameService.determineResult(chess),
+          });
         }
       }
 

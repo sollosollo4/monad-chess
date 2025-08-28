@@ -10,10 +10,10 @@ class AnalyzeService {
   private gameRepo = AppDataSource.getRepository(Game);
 
   public async analyzeEventHandler(event: any) {
-    const { before_fen, from, to, promotion, gameId, username, sideToMove } = event;
+    const { before_fen, after_fen, from, to, promotion, gameId, username, sideToMove } = event;
 
     const move = `${from}${to}${promotion ?? ""}`;
-    const analysis = await StockfishService.analyzeMoveDetailed(before_fen, from, to, promotion);
+    const analysis = await StockfishService.analyzeMoveDetailed(before_fen, after_fen, from, to, promotion);
 
     const commentary = await LlmCommentaryService.buildCommentary({
       language: "ru",

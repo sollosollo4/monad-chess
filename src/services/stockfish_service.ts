@@ -143,6 +143,7 @@ class StockfishService {
 
   async analyzeMoveDetailed(
     fenBefore: string,
+    fenAfter: string,
     from: string, 
     to: string,
     promotion: string,
@@ -161,17 +162,13 @@ class StockfishService {
       | "blunder";
     pv: string[];
   }> {
-    const chess = new Chess(fenBefore);
     const evalBefore = await this.getEvaluation(fenBefore, depth);
 
     const bestMove = await this.getBestMove(fenBefore, depth);
 
     const move = `${from}${to}${promotion ?? ""}`;
-    if (!chess.move({from, to, promotion})) {
-      throw new Error(`Invalid move: ${move}`);
-    }
+    
 
-    const fenAfter = chess.fen();
     const evalAfter = await this.getEvaluation(fenAfter, depth);
 
     const diff = (evalAfter.value ?? 0) - (evalBefore.value ?? 0);

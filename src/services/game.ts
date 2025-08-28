@@ -69,7 +69,11 @@ export class GameService {
       await this.gameRepo.save(game);
 
       if (white === "BOT" && chess.turn() === "w") {
-        await this.makeBotMove(game, room.code);
+        const botMove = await this.makeBotMove(game);
+        return {
+          game,
+          botMove
+        }
       }
     } else {
       if (!game.white && game.black !== username) {
@@ -81,10 +85,10 @@ export class GameService {
       }
     }
 
-    return game;
+    return {game};
   }
 
-  async makeBotMove(game: Game, roomCode: string) {
+  async makeBotMove(game: Game) {
     const chess = new Chess(game.fen);
 
     const best = await StockfishService.getBestMove(chess.fen());
@@ -111,29 +115,14 @@ export class GameService {
     game.fen = chess.fen();
     if (chess.isGameOver()) game.active = false;
     
-    await this.gameRepo.save(game);
+    await this.gameRepo.save(game);    
 
-    const roomService = new RoomService();
-    roomService.broadcast(roomCode, {
-      type: "move",
-      from: move.from,
-      to: move.to,
-      san: move.san,
-      fen: game.fen,
-      by: "BOT",
-    });
-
-    if (!game.active) {
-      roomService.broadcast(roomCode, {
-        type: "game_over",
-        result: this.determineResult(chess),
-      });
-    }
+    return {game, chess, from: move.from, to: move.to, san: move.san }
   }
 
   async makeMove(game: Game, username: string, msg: any) {
     const chess = new Chess(game.fen);
-
+    const fenBefore = game.fen;
     const sideToMove = chess.turn() === "w" ? "white" : "black";
     const expectedUsername = sideToMove === "white" ? game.white : game.black;
 
@@ -142,7 +131,7 @@ export class GameService {
     }
 
     const now = Date.now();
-    if (game.lastMoveAt) {
+    if (game.lastMoveAt && game.white !== 'BOT' && game.black !== 'BOT') {
       const elapsed = Math.floor((now - game.lastMoveAt) / 1000);
       if (sideToMove === "white") {
         game.whiteTime -= elapsed;
@@ -160,16 +149,6 @@ export class GameService {
         }
       }
     }
-
-    await sendEvent({ 
-      before_fen: game.fen, 
-      from: msg.from, 
-      to: msg.to, 
-      promotion: msg.promotion, 
-      gameId: game.id, 
-      username, 
-      sideToMove
-    });
 
     const move = chess.move({
       from: msg.from,
@@ -199,6 +178,17 @@ export class GameService {
     }
 
     await this.gameRepo.save(game);
+
+    sendEvent({ 
+      before_fen: fenBefore, 
+      after_fen: game.fen,
+      from: msg.from, 
+      to: msg.to, 
+      promotion: msg.promotion, 
+      gameId: game.id, 
+      username, 
+      sideToMove
+    });
 
     return { move, game, chess };
   }

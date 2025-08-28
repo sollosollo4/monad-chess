@@ -53,7 +53,7 @@ export function getChannel(): amqplib.Channel {
   return channel;
 }
 
-export const sendEvent = async (event: any) => {
+export const sendEvent = (event: any) => {
   if (!channel) throw new Error('RabbitMQ not initialized');
 
   const payload = Buffer.from(JSON.stringify(event));
