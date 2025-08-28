@@ -10,6 +10,7 @@ import {
 import { User } from "../entity/User";
 import { checkJwt } from "../middleware/auth";
 import LlmPuzzleService from "../services/llm_puzzle_service";
+import { UserPuzzleResult } from "../entity/UserPuzzleResult";
 
 const router = express.Router();
 
@@ -133,6 +134,13 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
 
     if (finished && req.user?.userId) {
       new_rating = await updateRating(req.user?.userId, 10);
+      const userPuzzleRepo = AppDataSource.getRepository(UserPuzzleResult)
+      
+      const newResult = userPuzzleRepo.create({
+        puzzle: puzzle,
+        user: req.user?.userId
+      });
+      await userPuzzleRepo.save(newResult);
     }
 
     return res.json({
@@ -153,15 +161,11 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
 router.post("/analyze", checkJwt, async (req: AuthRequest, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
   const { id, move, step, isGreeting } = req.body;
-  if (!id || !move || typeof step !== "number") {
-    return res.status(422).json({ error: "id, move and step are required" });
+  if (!isGreeting) {
+    if (!id || !move || typeof step !== "number") {
+      return res.status(422).json({ error: "id, move and step are required" });
+    }
   }
-
-  const puzzle = await puzzleRepo.findOneBy({ id });
-  if (!puzzle) {
-    return res.status(422).json({ error: "Puzzle not found" });
-  }
-
   if (isGreeting) {
     const user = await AppDataSource.getRepository(User).findOne(
       req?.user?.userId
@@ -170,6 +174,11 @@ router.post("/analyze", checkJwt, async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json(greeting);
   } else {
+    const puzzle = await puzzleRepo.findOneBy({ id });
+    if (!puzzle) {
+      return res.status(422).json({ error: "Puzzle not found" });
+    }
+
     const chess = new Chess(puzzle.fen);
 
     for (let i = 0; i < step; i++) {

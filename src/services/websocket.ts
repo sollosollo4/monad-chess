@@ -9,6 +9,7 @@ import { Puzzle } from "../entity/Puzzle";
 import { AppDataSource } from "../config/database";
 import LlmPuzzleService from "../services/llm_puzzle_service";
 import { Chess } from "chess.js";
+import { Helper } from "../utils/helper";
 
 interface IWebSocketServiceOptions {
   port?: number;
@@ -150,12 +151,14 @@ export class WebSocketService {
   }
 
   private async handleMove(ws: WebSocket, msg: any) {
+    const username = (ws as any).username;
+    const roomCode = (ws as any).room;
     try {
-      const username = (ws as any).username;
-      const roomCode = (ws as any).room;
       if (!username || !roomCode) throw new Error("Not authenticated");
-
-      const getGame = await this.gameService.getOrCreateGame(roomCode, username);
+      const getGame = await this.gameService.getOrCreateGame(
+        roomCode,
+        username
+      );
 
       const {
         move,
@@ -181,7 +184,13 @@ export class WebSocketService {
           ? "black"
           : null;
       if (botSide && chess.turn() === (botSide === "white" ? "w" : "b")) {
-        const botMove = await this.gameService.makeBotMove(getGame.game);
+        const botDepth = Helper.getDepthByRating(
+          getGame.game.room.botRating ?? 1200
+        );
+        const botMove = await this.gameService.makeBotMove(
+          getGame.game,
+          botDepth
+        );
         if (botMove) {
           this.roomService.broadcast(roomCode, {
             type: "move",
@@ -193,26 +202,40 @@ export class WebSocketService {
           });
         }
         if (!getGame.game.active) {
+          const result = await this.gameService.finalizeGame(
+            getGame.game,
+            chess
+          );
           this.roomService.broadcast(roomCode, {
             type: "game_over",
-            result: this.gameService.determineResult(chess),
+            result,
           });
         }
       }
 
       // Если игрок закончил игру (без бота)
       if (!updated.active && !botSide) {
+        const result = await this.gameService.finalizeGame(getGame.game, chess);
         this.roomService.broadcast(roomCode, {
           type: "game_over",
-          result: this.gameService.determineResult(chess),
+          result,
         });
       }
     } catch (e) {
       if (e instanceof TimeoutError) {
-        const roomCode = (ws as any).room;
+        const getGame = await this.gameService.getOrCreateGame(
+          roomCode,
+          username
+        );
+        const result = await this.gameService.finalizeGame(
+          getGame.game,
+          new Chess(getGame.game.fen),
+          "timeout",
+          e.winner
+        );
         this.roomService.broadcast(roomCode, {
           type: "game_over",
-          result: { reason: "timeout", winner: e.winner },
+          result,
         });
         return;
       }

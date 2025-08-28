@@ -11,6 +11,9 @@ import { parse } from "csv-parse";
 import path from "path";
 import { logger } from "../utils/log";
 import { MoveAnalysis } from "../entity/MoveAnalysis";
+import { UserGameResult } from "../entity/UserGameResult";
+import { UserPuzzleResult } from "../entity/UserPuzzleResult";
+import { Bot, seedBotsForCreating } from "../entity/Bot";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -19,7 +22,18 @@ export const AppDataSource = new DataSource({
   username: ENV.database.username,
   password: ENV.database.password,
   database: ENV.database.database,
-  entities: [User, Game, Room, Move, LinkedWallet, Puzzle, MoveAnalysis],
+  entities: [
+    User,
+    Game,
+    Room,
+    Move,
+    Bot,
+    LinkedWallet,
+    Puzzle,
+    MoveAnalysis,
+    UserGameResult,
+    UserPuzzleResult,
+  ],
   synchronize: true, // В проде false и миграции
 });
 
@@ -73,6 +87,14 @@ export const initDb = async () => {
       }
     } else {
       logger.info(`Puzzles count: ${puzzles_count}`);
+    }
+    // init bots
+    const botRepo = AppDataSource.getRepository(Bot);
+    if ((await botRepo.count()) === 0) {
+      seedBotsForCreating.forEach(async (e) => {
+        const createBot = botRepo.create(e);
+        await botRepo.save(createBot);
+      });
     }
   } catch (error) {
     logger.error(`DB init error, ${error}`);

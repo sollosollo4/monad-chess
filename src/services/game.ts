@@ -4,9 +4,10 @@ import { Game } from "../entity/Game";
 import { Move } from "../entity/Move";
 import { Room } from "../entity/Room";
 import { RoomService } from "./room_game";
-import  StockfishService  from "./stockfish_service";
+import StockfishService from "./stockfish_service";
 import { logger } from "../utils/log";
 import { sendEvent } from "../rabbitmq/client";
+import { Helper } from "../utils/helper";
 
 export class TimeoutError extends Error {
   winner;
@@ -25,13 +26,12 @@ export class GameService {
     const room = await this.roomRepo.findOne({ where: { code: roomCode } });
     if (!room) throw new Error("Room not found");
 
-    let game = await this.gameRepo.findOne({ 
-      where: { room: { id: room.id }}, 
-      relations: ["room"] 
+    let game = await this.gameRepo.findOne({
+      where: { room: { id: room.id } },
+      relations: ["room"],
     });
-    
-    if(game && !game.active)
-      throw new Error("Already played");
+
+    if (game && !game.active) throw new Error("Already played");
 
     if (!game) {
       const chess = new Chess();
@@ -69,11 +69,12 @@ export class GameService {
       await this.gameRepo.save(game);
 
       if (white === "BOT" && chess.turn() === "w") {
-        const botMove = await this.makeBotMove(game);
+        const botDepth = Helper.getDepthByRating(game.room.botRating ?? 1200);
+        const botMove = await this.makeBotMove(game, botDepth);
         return {
           game,
-          botMove
-        }
+          botMove,
+        };
       }
     } else {
       if (!game.white && game.black !== username) {
@@ -85,13 +86,13 @@ export class GameService {
       }
     }
 
-    return {game};
+    return { game };
   }
 
-  async makeBotMove(game: Game) {
+  async makeBotMove(game: Game, botDepth: number) {
     const chess = new Chess(game.fen);
 
-    const best = await StockfishService.getBestMove(chess.fen());
+    const best = await StockfishService.getBestMove(chess.fen(), botDepth);
     if (!best) return;
 
     const move = chess.move({
@@ -114,10 +115,10 @@ export class GameService {
 
     game.fen = chess.fen();
     if (chess.isGameOver()) game.active = false;
-    
-    await this.gameRepo.save(game);    
 
-    return {game, chess, from: move.from, to: move.to, san: move.san }
+    await this.gameRepo.save(game);
+
+    return { game, chess, from: move.from, to: move.to, san: move.san };
   }
 
   async makeMove(game: Game, username: string, msg: any) {
@@ -131,7 +132,7 @@ export class GameService {
     }
 
     const now = Date.now();
-    if (game.lastMoveAt && game.white !== 'BOT' && game.black !== 'BOT') {
+    if (game.lastMoveAt && game.white !== "BOT" && game.black !== "BOT") {
       const elapsed = Math.floor((now - game.lastMoveAt) / 1000);
       if (sideToMove === "white") {
         game.whiteTime -= elapsed;
@@ -179,28 +180,49 @@ export class GameService {
 
     await this.gameRepo.save(game);
 
-    sendEvent({ 
-      before_fen: fenBefore, 
+    sendEvent({
+      before_fen: fenBefore,
       after_fen: game.fen,
-      from: msg.from, 
-      to: msg.to, 
-      promotion: msg.promotion, 
-      gameId: game.id, 
-      username, 
-      sideToMove
+      from: msg.from,
+      to: msg.to,
+      promotion: msg.promotion,
+      gameId: game.id,
+      username,
+      sideToMove,
     });
 
     return { move, game, chess };
   }
 
+  async finalizeGame(
+    game: Game,
+    chess: Chess,
+    reason?: string,
+    winner?: string
+  ) {
+    game.active = false;
+    await this.gameRepo.save(game);
+
+    let result;
+
+    if (reason && winner) {
+      result = { reason, winner };
+    } else {
+      result = this.determineResult(chess);
+    }
+
+    return result;
+  }
+
   determineResult(chess: Chess) {
-    if (chess.isCheckmate())
+    if (chess.isCheckmate()) {
       return {
         reason: "checkmate",
         winner: chess.turn() === "w" ? "black" : "white",
       };
-    if (chess.isStalemate()) return { reason: "stalemate" };
-    if (chess.isDraw()) return { reason: "draw" };
-    return { reason: "unknown" };
+    }
+    if (chess.isStalemate()) return { reason: "stalemate", winner: null };
+    if (chess.isDraw()) return { reason: "draw", winner: null };
+    return { reason: "unknown", winner: null };
   }
 }

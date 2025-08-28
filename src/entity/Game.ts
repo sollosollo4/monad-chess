@@ -35,5 +35,5 @@ export class Game {
   increment!: number;
 
   @Column({ type: "bigint", nullable: true }) 
-  lastMoveAt!: number; // timestamp последнего хода
+  lastMoveAt!: number | null; // timestamp последнего хода
 }

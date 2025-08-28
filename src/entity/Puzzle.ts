@@ -5,8 +5,8 @@ export class Puzzle {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ nullable: true })
-  lichessId?: string;
+  @Column({ type: "varchar", nullable: true })
+  lichessId?: string| null;
 
   @Column("text")
   fen!: string;
@@ -16,9 +16,9 @@ export class Puzzle {
   solution!: string[];
 
   @Column({ type: "int", nullable: true })
-  rating?: number;
+  rating?: number | null;
 
   // темы: mateIn2, pin, fork и т.д.
   @Column("text", { array: true, nullable: true })
-  themes?: string[];
+  themes?: string[] | null;
 }

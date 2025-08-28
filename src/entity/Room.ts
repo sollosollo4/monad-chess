@@ -15,8 +15,8 @@ export class Room {
   @Column({ unique: true })
   code!: string; // short code
 
-  @Column({ nullable: true })
-  name?: string;
+  @Column({  type: "varchar", nullable: true })
+  name?: string | null;
 
   @CreateDateColumn()
   createdAt!: Date;
@@ -28,5 +28,5 @@ export class Room {
   adminSide!: Side;
 
   @Column({ type: "int", nullable: true })
-  botRating?: number;
+  botRating?: number|null;
 }
