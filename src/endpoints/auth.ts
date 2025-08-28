@@ -34,7 +34,7 @@ router.post("/login-global", async (req, res) => {
       user = existsAccount.user;
     } else {
       // если provider = "wallet" → проверка Monad API (как раньше)
-      if (provider === "wallet") {
+      if (provider === "monad") {
         const checkRes = await fetch(
           `https://monad-games-id-site.vercel.app/api/check-wallet?wallet=${encodeURIComponent(
             providerUserId
