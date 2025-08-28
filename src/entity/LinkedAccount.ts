@@ -19,9 +19,6 @@ export class LinkedAccount {
   providerUserId!: string; // адрес кошелька, twitterId, discordId и т.д.
 
   @Column()
-  address!: string;
-
-  @Column()
   providerAppId!: string;
 
   @ManyToOne(() => User, (user) => user.accounts, { onDelete: "CASCADE" })
