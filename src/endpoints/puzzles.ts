@@ -134,11 +134,11 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
 
     if (finished && req.user?.userId) {
       new_rating = await updateRating(req.user?.userId, 10);
-      const userPuzzleRepo = AppDataSource.getRepository(UserPuzzleResult)
-      
+      const userPuzzleRepo = AppDataSource.getRepository(UserPuzzleResult);
+
       const newResult = userPuzzleRepo.create({
         puzzle: puzzle,
-        user: req.user?.userId
+        user: req.user?.userId,
       });
       await userPuzzleRepo.save(newResult);
     }
@@ -161,43 +161,56 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
 router.post("/analyze", checkJwt, async (req: AuthRequest, res: Response) => {
   const puzzleRepo = AppDataSource.getRepository(Puzzle);
   const { id, move, step, isGreeting } = req.body;
-  if (!isGreeting) {
-    if (!id || !move || typeof step !== "number") {
-      return res.status(422).json({ error: "id, move and step are required" });
+  try {
+    if (!isGreeting) {
+      if (!id || !move || typeof step !== "number") {
+        return res
+          .status(422)
+          .json({ error: "id, move and step are required" });
+      }
     }
-  }
-  if (isGreeting) {
-    const user = await AppDataSource.getRepository(User).findOne(
-      req?.user?.userId
-    );
-    const greeting = await LlmPuzzleService.greetPlayer(user?.username);
+    if (isGreeting) {
+      let username = "MonadUser";
+      if (req.user) {
+        const user = await AppDataSource.getRepository(User).findOneByOrFail({
+          id: req.user.userId,
+        });
+        username = user?.username;
+      }
+      const greeting = await LlmPuzzleService.greetPlayer(username);
 
-    return res.status(200).json(greeting);
-  } else {
-    const puzzle = await puzzleRepo.findOneBy({ id });
-    if (!puzzle) {
-      return res.status(422).json({ error: "Puzzle not found" });
+      return res.status(200).json(greeting);
+    } else {
+      const puzzle = await puzzleRepo.findOneBy({ id });
+      if (!puzzle) {
+        return res.status(422).json({ error: "Puzzle not found" });
+      }
+
+      const chess = new Chess(puzzle.fen);
+
+      for (let i = 0; i < step; i++) {
+        const prevMove = puzzle.solution[i];
+        const from = prevMove.slice(0, 2);
+        const to = prevMove.slice(2, 4);
+        const promotion = prevMove.length === 5 ? prevMove[4] : undefined;
+        chess.move({ from, to, promotion });
+      }
+
+      const expectedMove = puzzle.solution[step];
+
+      const commentary = await LlmPuzzleService.moveComment(
+        move === expectedMove,
+        move,
+        step,
+        puzzle.solution.length
+      );
+      return res.status(200).json(commentary);
     }
-
-    const chess = new Chess(puzzle.fen);
-
-    for (let i = 0; i < step; i++) {
-      const prevMove = puzzle.solution[i];
-      const from = prevMove.slice(0, 2);
-      const to = prevMove.slice(2, 4);
-      const promotion = prevMove.length === 5 ? prevMove[4] : undefined;
-      chess.move({ from, to, promotion });
-    }
-
-    const expectedMove = puzzle.solution[step];
-
-    const commentary = await LlmPuzzleService.moveComment(
-      move === expectedMove,
-      move,
-      step,
-      puzzle.solution.length
-    );
-    return res.status(200).json(commentary);
+  } catch (err) {
+    return res.status(500).json({
+      error: "Internal error",
+      details: (err as Error).message,
+    });
   }
 });
 
