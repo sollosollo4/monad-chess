@@ -196,4 +196,38 @@ router.post("/updateRating", checkJwt, async (req: AuthRequest, res) => {
   }
 });
 
+router.get("/experience", checkJwt, async (req: AuthRequest, res) => {
+  try {
+    const { userId } = req.user;
+    const expRepo = AppDataSource.getRepository(UserExperience);
+
+    const experiences = await expRepo.find({
+      where: { user: { id: userId } },
+      order: { createdAt: "DESC" },
+    });
+
+    const total = experiences.reduce((sum, e) => sum + e.amount, 0);
+    const submitted = experiences
+      .filter((e) => e.submitted)
+      .reduce((sum, e) => sum + e.amount, 0);
+    const unsubmitted = total - submitted;
+
+    res.json({
+      success: true,
+      experience: {
+        total,
+        submitted,
+        unsubmitted,
+        records: experiences,
+      },
+    });
+  } catch (err) {
+    console.error("profile experience error", err);
+    res.status(500).json({
+      success: false,
+      error: { code: "ServerError", message: "Server error" },
+    });
+  }
+});
+
 export default router;
