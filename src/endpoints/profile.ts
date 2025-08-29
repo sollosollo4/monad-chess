@@ -82,7 +82,7 @@ router.post("/updateRating", checkJwt, async (req: AuthRequest, res) => {
     });
     if (user.monad_games_id) {
       if (!Helper.validateOrigin(req)) {
-        return res.status(403).json({ error: "Forbidden: Invalid origin" });
+        //return res.status(403).json({ error: "Forbidden: Invalid origin" });
       }
       if(user.updateRatingCalls == 0) {
         return res.status(422).json({ error: "The user has reached the rating update limit" });
