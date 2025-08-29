@@ -11,6 +11,7 @@ import { User } from "../entity/User";
 import { checkJwt } from "../middleware/auth";
 import LlmPuzzleService from "../services/llm_puzzle_service";
 import { UserPuzzleResult } from "../entity/UserPuzzleResult";
+import { UserExperience } from "../entity/UserExperience";
 
 const router = express.Router();
 
@@ -136,6 +137,7 @@ router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
         user: req.user?.userId,
       });
       await userPuzzleRepo.save(newResult);
+      await UserExperience.give(req.user?.userId, "puzzle_solved");
     }
 
     return res.json({

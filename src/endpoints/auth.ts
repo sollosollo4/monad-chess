@@ -8,13 +8,14 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from "../utils/jwt";
+import { UserExperience } from "../entity/UserExperience";
 
 const router = express.Router();
 
 router.post("/login-global", async (req, res) => {
   const userRepo = AppDataSource.getRepository(User);
   const accountRepo = AppDataSource.getRepository(LinkedAccount);
-
+  
   try {
     const { provider, providerUserId, providerAppId } = req.body;
     if (!provider || !providerUserId) {
@@ -58,6 +59,7 @@ router.post("/login-global", async (req, res) => {
               monad_games_id: true,
             });
             await userRepo.save(user);
+            await UserExperience.give(user.id, "register");
           } else {
             user = tryGetUser;
           }
@@ -72,6 +74,7 @@ router.post("/login-global", async (req, res) => {
             monad_games_id: false,
           });
           await userRepo.save(user);
+          await UserExperience.give(user.id, "register");
         }
       } else {
         // для соцсетей создаём нового пользователя
@@ -85,6 +88,7 @@ router.post("/login-global", async (req, res) => {
           monad_games_id: false,
         });
         await userRepo.save(user);
+        await UserExperience.give(user.id, "register");
       }
 
       // создаём связь

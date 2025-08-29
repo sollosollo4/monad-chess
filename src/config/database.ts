@@ -14,6 +14,7 @@ import { MoveAnalysis } from "../entity/MoveAnalysis";
 import { UserGameResult } from "../entity/UserGameResult";
 import { UserPuzzleResult } from "../entity/UserPuzzleResult";
 import { Bot, seedBotsForCreating } from "../entity/Bot";
+import { UserExperience } from "../entity/UserExperience";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -33,6 +34,7 @@ export const AppDataSource = new DataSource({
     MoveAnalysis,
     UserGameResult,
     UserPuzzleResult,
+    UserExperience
   ],
   synchronize: true, // В проде false и миграции
 });

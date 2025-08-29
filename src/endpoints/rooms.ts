@@ -55,7 +55,7 @@ router.post(
     let botRating = null;
     if(botId) {
       const botRepo = AppDataSource.getRepository(Bot);
-      const getBot = await botRepo.findOneOrFail(botId);
+      const getBot = await botRepo.findOneOrFail({where: {id: botId}});
       botRating = getBot.rating;
     }
 

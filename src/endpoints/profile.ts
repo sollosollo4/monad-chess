@@ -15,6 +15,7 @@ import {
   markRequestProcessing,
 } from "../utils/request-deduplication";
 import { logger } from "../utils/log";
+import { UserExperience } from "../entity/UserExperience";
 
 const router = express.Router();
 router.get("/me", checkJwt, async (req: AuthRequest, res) => {
@@ -84,8 +85,10 @@ router.post("/updateRating", checkJwt, async (req: AuthRequest, res) => {
       if (!Helper.validateOrigin(req)) {
         //return res.status(403).json({ error: "Forbidden: Invalid origin" });
       }
-      if(user.updateRatingCalls == 0) {
-        return res.status(422).json({ error: "The user has reached the rating update limit" });
+      if (user.updateRatingCalls == 0) {
+        return res
+          .status(422)
+          .json({ error: "The user has reached the rating update limit" });
       }
       const clientIp =
         req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || "unknown";
@@ -102,21 +105,31 @@ router.post("/updateRating", checkJwt, async (req: AuthRequest, res) => {
         });
       }
 
-      const { playerAddress, scoreAmount, transactionAmount } = {
-        playerAddress: user.accounts.filter((x) => x.provider == "monad").pop()
-          ?.providerUserId,
-        scoreAmount: user.rating,
-        transactionAmount: user.puzzleRating,
-      };
+      const playerAddress = user.accounts.filter((x) => x.provider == "monad").pop()?.providerUserId;
 
       if (!playerAddress || !isValidAddress(playerAddress)) {
         return res.status(400).json({ error: "Invalid player address format" });
       }
 
+      const expRepo = AppDataSource.getRepository(UserExperience);
+      const unsubmitted = await expRepo.find({
+        where: { user: { id: user.id }, submitted: false },
+      });
+
+      if (unsubmitted.length === 0) {
+        return res.status(200).json({
+          success: true,
+          result: null,
+          message: "No new XP to submit",
+        });
+      }
+
+      const totalXp = unsubmitted.reduce((sum, e) => sum + e.amount, 0);
+
       const requestId = generateRequestId(
         playerAddress,
-        scoreAmount,
-        transactionAmount
+        totalXp,
+        0
       );
       if (isDuplicateRequest(requestId)) {
         return res.status(409).json({
@@ -128,11 +141,16 @@ router.post("/updateRating", checkJwt, async (req: AuthRequest, res) => {
 
       const result = await updatePlayerData(
         playerAddress,
-        scoreAmount,
-        transactionAmount
+        totalXp,
+        0
       );
 
       markRequestComplete(requestId);
+
+      for (const exp of unsubmitted) {
+        exp.submitted = true;
+      }
+      await expRepo.save(unsubmitted);
 
       user.updateRatingCalls -= 1;
       await userRepo.save(user);
@@ -149,21 +167,26 @@ router.post("/updateRating", checkJwt, async (req: AuthRequest, res) => {
     }
   } catch (error) {
     logger.error("profile games error", error);
-    if(error instanceof Error) {
-      if (error.message.includes('insufficient funds')) {
-        return res.status(400).json(
-          { error: 'Insufficient funds to complete transaction' },
-        );
+    if (error instanceof Error) {
+      if (error.message.includes("insufficient funds")) {
+        return res
+          .status(400)
+          .json({ error: "Insufficient funds to complete transaction" });
       }
-      if (error.message.includes('execution reverted')) {
-        return res.status(400).json(
-          { error: 'Contract execution failed - check if wallet has GAME_ROLE permission' },
-        );
+      if (error.message.includes("execution reverted")) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Contract execution failed - check if wallet has GAME_ROLE permission",
+          });
       }
-      if (error.message.includes('AccessControlUnauthorizedAccount')) {
-        return res.status(400).json(
-          { error: 'Unauthorized: Wallet does not have GAME_ROLE permission' },
-        );
+      if (error.message.includes("AccessControlUnauthorizedAccount")) {
+        return res
+          .status(400)
+          .json({
+            error: "Unauthorized: Wallet does not have GAME_ROLE permission",
+          });
       }
     }
     res.status(500).json({
