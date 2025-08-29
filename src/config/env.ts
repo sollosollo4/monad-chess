@@ -38,4 +38,6 @@ export const ENV = {
   },
   rabbitmq_host: process.env.RABBITMQ_URL || 'amqp://rabbitmq',
   llm_api_key: process.env.LLM_API_KEY || '',
+  private_key: process.env.WALLET_PRIVATE_KEY,
+  frontend_host: process.env.FRONTEND_HOST,
 };
