@@ -30,8 +30,10 @@ class StockfishService {
     this.engine.stdin.write(cmd + "\n");
   }
 
-  async getBestMove(fen: string, depth = 12): Promise<string> {
+  async getBestMove(fen: string, depth = 12, elo = 1600): Promise<string> {
     return new Promise((resolve) => {
+      this.send("setoption name UCI_LimitStrength value true");
+      this.send(`setoption name UCI_Elo value ${elo}`);
       const handler = (line: string) => {
         if (line.startsWith("bestmove")) {
           const move = line.split(" ")[1];
@@ -111,7 +113,7 @@ class StockfishService {
 
     const evalBefore = await this.getEvaluation(fen, depth);
 
-    const bestMove = await this.getBestMove(fen, depth);
+    const bestMove = await this.getBestMove(fen, depth, 3000);
 
     if (!chess.move(move)) {
       throw new Error(`The move ${move} is invalid in this position.`);
@@ -164,7 +166,7 @@ class StockfishService {
   }> {
     const evalBefore = await this.getEvaluation(fenBefore, depth);
 
-    const bestMove = await this.getBestMove(fenBefore, depth);
+    const bestMove = await this.getBestMove(fenBefore, depth, 3000);
 
     const move = `${from}${to}${promotion ?? ""}`;
     

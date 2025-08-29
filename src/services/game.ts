@@ -70,7 +70,7 @@ export class GameService {
 
       if (white === "BOT" && chess.turn() === "w") {
         const botDepth = Helper.getDepthByRating(game.room.botRating ?? 1200);
-        const botMove = await this.makeBotMove(game, botDepth);
+        const botMove = await this.makeBotMove(game, botDepth, game.room.botRating ?? 1000);
         return {
           game,
           botMove,
@@ -89,10 +89,10 @@ export class GameService {
     return { game };
   }
 
-  async makeBotMove(game: Game, botDepth: number) {
+  async makeBotMove(game: Game, botDepth: number, elo: number) {
     const chess = new Chess(game.fen);
 
-    const best = await StockfishService.getBestMove(chess.fen(), botDepth);
+    const best = await StockfishService.getBestMove(chess.fen(), botDepth, elo);
     if (!best) return;
 
     const move = chess.move({
