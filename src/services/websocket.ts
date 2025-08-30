@@ -242,7 +242,7 @@ export class WebSocketService {
         });
         return;
       }
-      logger.error(JSON.stringify(e))
+      console.log(e)
       ws.send(JSON.stringify({ type: "error", message: (e as Error).message }));
     }
   }
