@@ -90,7 +90,6 @@ export class GameService {
   }
 
   async makeBotMove(game: Game, botDepth: number, elo: number) {
-    logger.info(`Call makeBotMove ${game.fen}`)
     const chess = new Chess(game.fen);
 
     const best = await StockfishService.getBestMove(chess.fen(), botDepth, elo);
@@ -161,16 +160,7 @@ export class GameService {
     });
 
     if (!move) {
-      logger.info(JSON.stringify(
-        {
-          msg,
-          sideToMove,
-          expectedUsername
-        }
-      ))
-      
       throw new Error("Invalid move");
-
     }
 
     if (sideToMove === "white") game.whiteTime += game.increment;
