@@ -23,7 +23,7 @@ export const startConsumer = async () => {
           try {
             const content = JSON.parse(msg.content.toString());
             logger.info(`Consumer message: ${msg.content.toString()}`);
-            AnalyzeService.analyzeEventHandler(content);
+            await AnalyzeService.analyzeEventHandler(content);
 
             channel.ack(msg);
           } catch (error) {

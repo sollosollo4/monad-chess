@@ -127,12 +127,13 @@ export class GameService {
       );
       const fenBefore = game.fen;
       game.fen = chess.fen();
+      game.moveIncrement += 1;
       if (chess.isGameOver()) game.active = false;
 
       await this.gameRepo.save(game);
 
       sendEvent({
-        index: chess.history().length,
+        index: game.moveIncrement,
         before_fen: fenBefore,
         after_fen: game.fen,
         from: from,
@@ -208,6 +209,7 @@ export class GameService {
 
     game.lastMoveAt = now;
     game.fen = chess.fen();
+    game.moveIncrement += 1;
     if (chess.isGameOver()) {
       game.active = false;
     }
@@ -215,7 +217,7 @@ export class GameService {
     await this.gameRepo.save(game);
 
     sendEvent({
-      index: chess.history().length,
+      index: game.moveIncrement,
       before_fen: fenBefore,
       after_fen: game.fen,
       from: msg.from,
