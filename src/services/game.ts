@@ -98,6 +98,8 @@ export class GameService {
     const from = best.substring(0, 2);
     const to = best.substring(2, 4);
     const promotion = best.length === 5 ? best[4] : undefined
+    
+    console.log(`Try on ${game.fen} make ${from}${to}`);
 
     const move = chess.move(
       promotion ? { from, to, promotion } : { from, to }
