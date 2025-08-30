@@ -10,7 +10,7 @@ class AnalyzeService {
   private gameRepo = AppDataSource.getRepository(Game);
 
   public async analyzeEventHandler(event: any) {
-    const { before_fen, after_fen, from, to, promotion, gameId, username, sideToMove } = event;
+    const { index, before_fen, after_fen, from, to, promotion, gameId, username, sideToMove } = event;
 
     const move = `${from}${to}${promotion ?? ""}`;
     const analysis = await StockfishService.analyzeMoveDetailed(before_fen, after_fen, from, to, promotion);
@@ -35,6 +35,7 @@ class AnalyzeService {
     const record = this.repo.create({
       game,
       move,
+      moveNumber: index,
       side: sideToMove,
       fenBefore: before_fen,
       fenAfter: analysis.fenAfter,

@@ -9,6 +9,9 @@ export class MoveAnalysis {
   @ManyToOne(() => Game)
   game!: Game;
 
+  @Column({ type: 'int' })
+  moveNumber!: number;
+
   @Column()
   move!: string; // например e2e4q
 

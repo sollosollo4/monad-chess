@@ -125,11 +125,23 @@ export class GameService {
           by: "BOT",
         })
       );
-
+      const fenBefore = game.fen;
       game.fen = chess.fen();
       if (chess.isGameOver()) game.active = false;
 
       await this.gameRepo.save(game);
+
+      sendEvent({
+        index: chess.history().length,
+        before_fen: fenBefore,
+        after_fen: game.fen,
+        from: from,
+        to: to,
+        promotion: promotion,
+        gameId: game.id,
+        username: 'BOT',
+        sideToMove: chess.turn() === 'w' ? 'b' : 'w',
+      });
 
       return { game, chess, from: move.from, to: move.to, san: move.san , promotion};
     } catch (error) {
@@ -202,6 +214,7 @@ export class GameService {
     await this.gameRepo.save(game);
 
     sendEvent({
+      index: chess.history().length,
       before_fen: fenBefore,
       after_fen: game.fen,
       from: msg.from,

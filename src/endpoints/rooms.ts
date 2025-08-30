@@ -206,10 +206,9 @@ router.get("/analyze/:code", async (req, res) => {
     const analysisRepo = AppDataSource.getRepository(MoveAnalysis);
     const analyses = await analysisRepo.find({
       where: { game: { id: game.id } },
-      order: { createdAt: "ASC" },
+      order: { moveNumber: "ASC" },
     });
 
-    // удобно склеим в ответ
     return res.json({
       room,
       game,

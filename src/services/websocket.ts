@@ -188,24 +188,13 @@ export class WebSocketService {
         const botDepth = Helper.getDepthByRating(
           getGame.game.room.botRating ?? 1200
         );
-        const fenBefore = updated.fen;
+        
         const botMove = await this.gameService.makeBotMove(
           updated,
           botDepth,
           updated.room.botRating ?? 1000
         );
         if (botMove) {
-          sendEvent({
-            before_fen: fenBefore,
-            after_fen: botMove.game.fen,
-            from: botMove.from,
-            to: botMove.to,
-            promotion: botMove.promotion,
-            gameId: botMove.game.id,
-            username,
-            sideToMove: botSide,
-          });
-
           this.roomService.broadcast(roomCode, {
             type: "move",
             from: botMove.from,
