@@ -47,7 +47,7 @@ class LlmCommentaryService {
             { role: "user", content: prompt },
           ],
           response_format: { type: "json_object" }, // для OpenAI-совместимых
-          max_tokens: 180,
+          max_tokens: 600,
         }),
       });
 
@@ -78,10 +78,10 @@ class LlmCommentaryService {
 
     const short =
       tone === "warn"
-        ? "Ход не самый точный — попробуй защищать ключевые поля и развивать фигуры."
+        ? "The move is not the most precise - try to protect key squares and develop pieces"
         : tone === "encourage"
-        ? "Отличная идея! Ты усилил позицию и сохранил инициативу."
-        : "Нормальный ход. Смотри идеи по улучшению развития и безопасности короля.";
+        ? "Great idea! You strengthened your position and kept the initiative."
+        : "Normal move. See ideas for improving the development and safety of the king.";
 
     return { short, hint: "", tone, tags: [] };
   }

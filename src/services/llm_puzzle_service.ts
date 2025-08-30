@@ -47,7 +47,7 @@ class LlmPuzzleService {
             { role: "user", content: prompt },
           ],
           response_format: { type: "json_object" },
-          max_tokens: 120,
+          max_tokens: 600,
         }),
       });
 
@@ -108,7 +108,7 @@ class LlmPuzzleService {
     
     return (
       (await this.askLLM(prompt)) ?? {
-        text: "Удачи в этом паззле!",
+        text: "Good luck with this puzzle!",
         tone: "encourage",
       }
     );
@@ -201,8 +201,8 @@ class LlmPuzzleService {
     return (
       (await this.askLLM(prompt)) ?? {
         text: isCorrect
-          ? "Хорошо! Продолжай."
-          : "Это неточно, попробуй подумать снова.",
+          ? "Okay! Go on."
+          : "This is not accurate, try thinking again.",
         tone: isCorrect ? "encourage" : "warn",
       }
     );
@@ -218,7 +218,7 @@ class LlmPuzzleService {
 
     return (
       (await this.askLLM(prompt)) ?? {
-        text: "Попробуй найти сильный тактический приём в этой позиции.",
+        text: "Try to find a strong tactical move in this position.",
         tone: "neutral",
       }
     );
