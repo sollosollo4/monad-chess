@@ -16,6 +16,9 @@ export class MoveAnalysis {
   move!: string; // например e2e4q
 
   @Column()
+  piece!: string; // например e2e4q
+
+  @Column()
   side!: string;
 
   @Column("text")
