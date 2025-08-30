@@ -35,6 +35,7 @@ class AnalyzeService {
     const record = this.repo.create({
       game,
       move,
+      side: sideToMove,
       fenBefore: before_fen,
       fenAfter: analysis.fenAfter,
       evalBeforeCp: analysis.evalBeforeCp,

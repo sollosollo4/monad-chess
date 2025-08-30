@@ -12,6 +12,9 @@ export class MoveAnalysis {
   @Column()
   move!: string; // например e2e4q
 
+  @Column()
+  side!: string;
+
   @Column("text")
   fenBefore!: string;
 
