@@ -70,7 +70,11 @@ export class GameService {
 
       if (white === "BOT" && chess.turn() === "w") {
         const botDepth = Helper.getDepthByRating(game.room.botRating ?? 1200);
-        const botMove = await this.makeBotMove(game, botDepth, game.room.botRating ?? 1000);
+        const botMove = await this.makeBotMove(
+          game,
+          botDepth,
+          game.room.botRating ?? 1000
+        );
         return {
           game,
           botMove,
@@ -89,40 +93,43 @@ export class GameService {
     return { game };
   }
 
-  async makeBotMove(game: Game, botDepth: number, elo: number) {
+  async makeBotMove(game: Game, botDepth: number, elo: number): Promise<any> {
     const chess = new Chess(game.fen);
 
-    const best = await StockfishService.getBestMove(game.fen, botDepth, elo);
-    if (!best) return;
-    
-    const from = best.substring(0, 2);
-    const to = best.substring(2, 4);
-    const promotion = best.length === 5 ? best[4] : undefined
-    
-    console.log(`Try on ${game.fen} make ${from}${to}`);
+    try {
+      const best = await StockfishService.getBestMove(game.fen, botDepth, elo);
+      if (!best) return;
 
-    const move = chess.move(
-      promotion ? { from, to, promotion } : { from, to }
-    );
+      const from = best.substring(0, 2);
+      const to = best.substring(2, 4);
+      const promotion = best.length === 5 ? best[4] : undefined;
 
-    if (!move) return;
+      const move = chess.move(
+        promotion ? { from, to, promotion } : { from, to }
+      );
+      if (!move) return;
 
-    await this.moveRepo.save(
-      this.moveRepo.create({
-        game,
-        from: move.from,
-        to: move.to,
-        san: move.san,
-        by: "BOT",
-      })
-    );
+      await this.moveRepo.save(
+        this.moveRepo.create({
+          game,
+          from: move.from,
+          to: move.to,
+          san: move.san,
+          by: "BOT",
+        })
+      );
 
-    game.fen = chess.fen();
-    if (chess.isGameOver()) game.active = false;
+      game.fen = chess.fen();
+      if (chess.isGameOver()) game.active = false;
 
-    await this.gameRepo.save(game);
+      await this.gameRepo.save(game);
 
-    return { game, chess, from: move.from, to: move.to, san: move.san };
+      return { game, chess, from: move.from, to: move.to, san: move.san };
+    } catch (error) {
+      if(error instanceof Error) {
+        return await this.makeBotMove(game, botDepth, elo);
+      }
+    }
   }
 
   async makeMove(game: Game, username: string, msg: any) {
@@ -224,11 +231,18 @@ export class GameService {
     if (chess.isCheckmate()) {
       return {
         reason: "checkmate",
-        winner: chess.turn() === "w" ?  "white" : "black",
+        winner: chess.turn() === "w" ? "white" : "black",
       };
     }
-    if (chess.isStalemate()) return { reason: "stalemate", winner: chess.turn() === "w" ? "white" : "black" };
+    if (chess.isStalemate())
+      return {
+        reason: "stalemate",
+        winner: chess.turn() === "w" ? "white" : "black",
+      };
     if (chess.isDraw()) return { reason: "draw", winner: null };
-    return { reason: "unknown", winner: chess.turn() === "w" ? "white" : "black" };
+    return {
+      reason: "unknown",
+      winner: chess.turn() === "w" ? "white" : "black",
+    };
   }
 }
