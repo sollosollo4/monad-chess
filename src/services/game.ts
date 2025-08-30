@@ -92,7 +92,7 @@ export class GameService {
   async makeBotMove(game: Game, botDepth: number, elo: number) {
     const chess = new Chess(game.fen);
 
-    const best = await StockfishService.getBestMove(chess.fen(), botDepth, elo);
+    const best = await StockfishService.getBestMove(game.fen, botDepth, elo);
     if (!best) return;
     
     const from = best.substring(0, 2);
