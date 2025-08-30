@@ -30,8 +30,25 @@ class StockfishService {
     this.engine.stdin.write(cmd + "\n");
   }
 
+  getMistakeProb(elo: number): number {
+    if (elo <= 800) return 0.8;
+    if (elo >= 2000) return 0.05;
+    const slope = (0.05 - 0.8) / (2000 - 800); 
+    return 0.8 + slope * (elo - 800);
+  }
+
   async getBestMove(fen: string, depth = 12, elo = 1600): Promise<string> {
     return new Promise((resolve) => {
+
+      const mistakeProb = this.getMistakeProb(elo);
+      const chess = new Chess(fen);
+      const legalMoves = chess.moves({ verbose: true });
+
+      if (Math.random() < mistakeProb && legalMoves.length > 0) {
+        const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+        return resolve(randomMove.from + randomMove.to + (randomMove.promotion || ""));
+      }
+
       this.send("setoption name UCI_LimitStrength value true");
       this.send(`setoption name UCI_Elo value ${elo}`);
       const handler = (line: string) => {
