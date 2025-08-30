@@ -14,6 +14,7 @@ type MoveReturnType = {
   chess: Chess; 
   from: string; 
   to: string; 
+  promotion: string|undefined;
   san: string;
 }
 export class TimeoutError extends Error {
@@ -130,7 +131,7 @@ export class GameService {
 
       await this.gameRepo.save(game);
 
-      return { game, chess, from: move.from, to: move.to, san: move.san };
+      return { game, chess, from: move.from, to: move.to, san: move.san , promotion};
     } catch (error) {
       if(error instanceof Error) {
         return await this.makeBotMove(game, botDepth, elo);

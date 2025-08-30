@@ -198,9 +198,9 @@ export class WebSocketService {
           sendEvent({
             before_fen: fenBefore,
             after_fen: botMove.game.fen,
-            from: msg.from,
-            to: msg.to,
-            promotion: msg.promotion,
+            from: botMove.from,
+            to: botMove.to,
+            promotion: botMove.promotion,
             gameId: botMove.game.id,
             username,
             sideToMove: botSide,
