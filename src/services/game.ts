@@ -90,6 +90,7 @@ export class GameService {
   }
 
   async makeBotMove(game: Game, botDepth: number, elo: number) {
+    logger.info(`Call makeBotMove ${game.fen}`)
     const chess = new Chess(game.fen);
 
     const best = await StockfishService.getBestMove(chess.fen(), botDepth, elo);
