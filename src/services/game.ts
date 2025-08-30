@@ -157,7 +157,18 @@ export class GameService {
       promotion: msg.promotion,
     });
 
-    if (!move) throw new Error("Invalid move");
+    if (!move) {
+      logger.info(JSON.stringify(
+        {
+          msg,
+          sideToMove,
+          expectedUsername
+        }
+      ))
+      
+      throw new Error("Invalid move");
+
+    }
 
     if (sideToMove === "white") game.whiteTime += game.increment;
     else game.blackTime += game.increment;
