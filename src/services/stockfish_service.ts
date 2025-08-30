@@ -2,7 +2,13 @@ import { spawn } from "child_process";
 import { logger } from "../utils/log";
 import { Chess } from "chess.js";
 
-type Severity = "brilliant" | "great" | "good" | "inaccuracy" | "mistake" | "blunder";
+type Severity =
+  | "brilliant"
+  | "great"
+  | "good"
+  | "inaccuracy"
+  | "mistake"
+  | "blunder";
 
 class StockfishService {
   private engine;
@@ -27,7 +33,11 @@ class StockfishService {
   }
 
   private async withListener<T>(
-    executor: (resolve: (val: T) => void, reject: (err: Error) => void, cleanup: () => void) => void,
+    executor: (
+      resolve: (val: T) => void,
+      reject: (err: Error) => void,
+      cleanup: () => void
+    ) => void,
     timeoutMs = 5000
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -55,10 +65,14 @@ class StockfishService {
   }
 
   getMistakeProb(elo: number): number {
-    if (elo <= 800) return 0.8;
-    if (elo >= 2000) return 0.05;
-    const slope = (0.05 - 0.8) / (2000 - 800);
-    return 0.8 + slope * (elo - 800);
+    const minElo = 100;
+    const maxElo = 3000;
+    const clamped = Math.max(minElo, Math.min(maxElo, elo));
+    
+    const t = (clamped - minElo) / (maxElo - minElo);
+    
+    const prob = 0.99 * Math.pow(0.02, t); // 0.99 → ~0.0
+    return Math.max(0, Math.min(1, prob));
   }
 
   async getBestMove(fen: string, depth = 12, elo = 1600): Promise<string> {
@@ -69,9 +83,12 @@ class StockfishService {
 
       // Симуляция ошибки игрока
       if (Math.random() < mistakeProb && legalMoves.length > 0) {
-        const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+        const randomMove =
+          legalMoves[Math.floor(Math.random() * legalMoves.length)];
         cleanup();
-        return resolve(randomMove.from + randomMove.to + (randomMove.promotion || ""));
+        return resolve(
+          randomMove.from + randomMove.to + (randomMove.promotion || "")
+        );
       }
 
       this.send("setoption name UCI_LimitStrength value true");
@@ -96,7 +113,11 @@ class StockfishService {
     fen: string,
     depth = 12
   ): Promise<{ type: "cp" | "mate"; value: number; pv: string[] }> {
-    return this.withListener<{ type: "cp" | "mate"; value: number; pv: string[] }>((resolve, _reject, cleanup) => {
+    return this.withListener<{
+      type: "cp" | "mate";
+      value: number;
+      pv: string[];
+    }>((resolve, _reject, cleanup) => {
       const handler = (line: string) => {
         if (line.startsWith("info") && line.includes("score")) {
           const matchCp = line.match(/score cp (-?\d+)/);
@@ -160,13 +181,20 @@ class StockfishService {
 
     let comment = "";
     if (evalAfter.type === "mate") {
-      comment = evalAfter.value > 0 ? "Excellent! White checkmates." : "Bad: Black gets forced checkmate.";
+      comment =
+        evalAfter.value > 0
+          ? "Excellent! White checkmates."
+          : "Bad: Black gets forced checkmate.";
     } else {
       const diff = evalAfter.value - evalBefore.value;
-      if (move === bestMove) comment = `Great move! This matches the engine's recommendation (${bestMove}).`;
-      else if (diff > -50) comment = `The move ${move} is quite normal, but the engine preferred ${bestMove}.`;
-      else if (diff > -200) comment = `Move ${move} weakened the position. It was better to play ${bestMove}.`;
-      else comment = `The move ${move} is a serious mistake! The position is much worse after it. The engine advised ${bestMove}.`;
+      if (move === bestMove)
+        comment = `Great move! This matches the engine's recommendation (${bestMove}).`;
+      else if (diff > -50)
+        comment = `The move ${move} is quite normal, but the engine preferred ${bestMove}.`;
+      else if (diff > -200)
+        comment = `Move ${move} weakened the position. It was better to play ${bestMove}.`;
+      else
+        comment = `The move ${move} is a serious mistake! The position is much worse after it. The engine advised ${bestMove}.`;
     }
 
     return { comment, bestMove };
