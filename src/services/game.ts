@@ -94,12 +94,14 @@ export class GameService {
 
     const best = await StockfishService.getBestMove(chess.fen(), botDepth, elo);
     if (!best) return;
+    
+    const from = best.substring(0, 2);
+    const to = best.substring(2, 4);
+    const promotion = best.length === 5 ? best[4] : undefined
 
-    const move = chess.move({
-      from: best.substring(0, 2),
-      to: best.substring(2, 4),
-      promotion: "q",
-    });
+    const move = chess.move(
+      promotion ? { from, to, promotion } : { from, to }
+    );
 
     if (!move) return;
 
