@@ -205,7 +205,9 @@ export class WebSocketService {
         if (!getGame.game.active) {
           const result = await this.gameService.finalizeGame(
             getGame.game,
-            chess
+            chess,
+            'stalemate',
+            botSide
           );
           this.roomService.broadcast(roomCode, {
             type: "game_over",

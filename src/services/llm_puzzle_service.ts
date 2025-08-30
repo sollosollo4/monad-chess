@@ -69,15 +69,15 @@ class LlmPuzzleService {
     const coin = Math.random() < 0.5;
     const namePart = playerName ? `Игрок ${playerName}` : "друг";
     let prompt: string;
-    if(coin){
+    if(coin) {
       prompt = `Пиши in English. Придумай короткое и оригинальное приветствие для ${namePart}, который начинает решать шахматный паззл. 
       Будь дружелюбным. Используй crypto мемы и приколы.
       Верни JSON вида { "text": "...", "tone": "encourage" }`;
     }
     else {
       prompt = `Пиши in English. Ты устал от вечных наплывов пользователей, и не хочешь их больше видеть, пошути на тему not eligible, dump рынка, что Monad скам, 
-        Full Access роль не мультипликатор, и вообще MikeWeb заберет дроп себе. Не извиняйся за свои шутки. Не делай слишком большой ответ.
-        Верни JSON вида { "text": "...", "tone": "encourage" }`;
+      Full Access роль не мультипликатор, и вообще MikeWeb заберет дроп себе. Не извиняйся за свои шутки. Не делай слишком большой ответ.
+      Верни JSON вида { "text": "...", "tone": "encourage" }`;
     }
     
     return (

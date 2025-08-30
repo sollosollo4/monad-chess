@@ -53,9 +53,9 @@ router.post(
     }
 
     let botRating = null;
-    if(botId) {
+    if (botId) {
       const botRepo = AppDataSource.getRepository(Bot);
-      const getBot = await botRepo.findOneOrFail({where: {id: botId}});
+      const getBot = await botRepo.findOneOrFail({ where: { id: botId } });
       botRating = getBot.rating;
     }
 
@@ -64,20 +64,26 @@ router.post(
       name: name,
       mode: (mode as RoomMode) || "pvp",
       adminSide: (side as Side) || "random",
-      botRating
+      botRating,
     });
     await repo.save(room);
     res.json({ code: room.code });
   }
 );
 
-router.get("/bots", optionalAuthMiddleware, async (req: AuthRequest, res: Response) => {
+router.get(
+  "/bots",
+  optionalAuthMiddleware,
+  async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.user?.userId;
       const botRepo = AppDataSource.getRepository(Bot);
 
       if (!userId) {
-        const bots = await botRepo.createQueryBuilder("bot").addOrderBy("bot.rating", "ASC").getMany();
+        const bots = await botRepo
+          .createQueryBuilder("bot")
+          .addOrderBy("bot.rating", "ASC")
+          .getMany();
         if (bots.length === 0) return res.json({ bots: [] });
 
         const withFlag = bots.map((b, i) =>
@@ -120,7 +126,7 @@ router.get("/bots", optionalAuthMiddleware, async (req: AuthRequest, res: Respon
   }
 );
 
-router.get("/analyze/:code", async (req, res) => {
+router.get("/analyze/full/:code", async (req, res) => {
   try {
     const roomRepo = AppDataSource.getRepository(Room);
 
@@ -150,6 +156,53 @@ router.get("/analyze/:code", async (req, res) => {
     });
 
     // достаём анализ ходов
+    const analysisRepo = AppDataSource.getRepository(MoveAnalysis);
+    const analyses = await analysisRepo.find({
+      where: { game: { id: game.id } },
+      order: { createdAt: "ASC" },
+    });
+
+    // удобно склеим в ответ
+    return res.json({
+      room,
+      game,
+      moves,
+      analyses,
+    });
+  } catch (err) {
+    logger.error("Analyze error", err);
+    return res.status(500).json({ error: "Internal error" });
+  }
+});
+
+router.get("/analyze/:code", async (req, res) => {
+  try {
+    const roomRepo = AppDataSource.getRepository(Room);
+
+    const room = await roomRepo.findOne({
+      where: { code: req.params.code },
+    });
+
+    if (!room) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    // достаём игру
+    const gameRepo = AppDataSource.getRepository(Game);
+    const game = await gameRepo.findOne({
+      where: { room: { id: room.id } },
+    });
+
+    if (!game) {
+      return res.status(404).json({ error: "Game not found" });
+    }
+
+    const moveRepo = AppDataSource.getRepository(Move);
+    const moves = await moveRepo.find({
+      where: { game: { id: game.id } },
+      order: { createdAt: "ASC" },
+    });
+
     const analysisRepo = AppDataSource.getRepository(MoveAnalysis);
     const analyses = await analysisRepo.find({
       where: { game: { id: game.id } },

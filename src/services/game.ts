@@ -218,11 +218,11 @@ export class GameService {
     if (chess.isCheckmate()) {
       return {
         reason: "checkmate",
-        winner: chess.turn() === "w" ? "black" : "white",
+        winner: chess.turn() === "w" ?  "white" : "black",
       };
     }
-    if (chess.isStalemate()) return { reason: "stalemate", winner: chess.turn() === "w" ? "black" : "white" };
+    if (chess.isStalemate()) return { reason: "stalemate", winner: chess.turn() === "w" ? "white" : "black" };
     if (chess.isDraw()) return { reason: "draw", winner: null };
-    return { reason: "unknown", winner: chess.turn() === "w" ? "black" : "white" };
+    return { reason: "unknown", winner: chess.turn() === "w" ? "white" : "black" };
   }
 }
