@@ -221,8 +221,8 @@ export class GameService {
         winner: chess.turn() === "w" ? "black" : "white",
       };
     }
-    if (chess.isStalemate()) return { reason: "stalemate", winner: null };
+    if (chess.isStalemate()) return { reason: "stalemate", winner: chess.turn() === "w" ? "black" : "white" };
     if (chess.isDraw()) return { reason: "draw", winner: null };
-    return { reason: "unknown", winner: null };
+    return { reason: "unknown", winner: chess.turn() === "w" ? "black" : "white" };
   }
 }

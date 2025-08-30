@@ -189,7 +189,8 @@ export class WebSocketService {
         );
         const botMove = await this.gameService.makeBotMove(
           getGame.game,
-          botDepth
+          botDepth,
+          getGame.game.room.botRating ?? 1000
         );
         if (botMove) {
           this.roomService.broadcast(roomCode, {

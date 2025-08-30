@@ -2,10 +2,10 @@ import { ENV } from "../config/env";
 import { Request } from 'express';
 export class Helper {
   public static getDepthByRating(rating: number): number {
-    if(rating < 100) return 1;
-    if(rating < 500) return 2;
+    if (rating < 100) return 1;
+    if (rating < 500) return 2;
     if (rating < 800) return 3;
-    if(rating < 900) return 4;
+    if (rating < 900) return 4;
     if (rating < 1200) return 6;
     if (rating < 1600) return 8;
     if (rating < 2000) return 10;
