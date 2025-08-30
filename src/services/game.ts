@@ -9,6 +9,13 @@ import { logger } from "../utils/log";
 import { sendEvent } from "../rabbitmq/client";
 import { Helper } from "../utils/helper";
 
+type MoveReturnType = {
+  game: Game;
+  chess: Chess; 
+  from: string; 
+  to: string; 
+  san: string;
+}
 export class TimeoutError extends Error {
   winner;
   constructor(winner: string) {
@@ -93,12 +100,11 @@ export class GameService {
     return { game };
   }
 
-  async makeBotMove(game: Game, botDepth: number, elo: number): Promise<any> {
-    const chess = new Chess(game.fen);
-
+  async makeBotMove(game: Game, botDepth: number, elo: number): Promise<MoveReturnType| null>{
     try {
+      const chess = new Chess(game.fen);
       const best = await StockfishService.getBestMove(game.fen, botDepth, elo);
-      if (!best) return;
+      if (!best) return null;
 
       const from = best.substring(0, 2);
       const to = best.substring(2, 4);
@@ -107,7 +113,7 @@ export class GameService {
       const move = chess.move(
         promotion ? { from, to, promotion } : { from, to }
       );
-      if (!move) return;
+      if (!move) return null;
 
       await this.moveRepo.save(
         this.moveRepo.create({
@@ -129,6 +135,7 @@ export class GameService {
       if(error instanceof Error) {
         return await this.makeBotMove(game, botDepth, elo);
       }
+      return null;
     }
   }
 

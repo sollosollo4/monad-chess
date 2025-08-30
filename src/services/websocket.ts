@@ -10,6 +10,7 @@ import { AppDataSource } from "../config/database";
 import LlmPuzzleService from "../services/llm_puzzle_service";
 import { Chess } from "chess.js";
 import { Helper } from "../utils/helper";
+import { sendEvent } from "../rabbitmq/client";
 
 interface IWebSocketServiceOptions {
   port?: number;
@@ -187,12 +188,24 @@ export class WebSocketService {
         const botDepth = Helper.getDepthByRating(
           getGame.game.room.botRating ?? 1200
         );
+        const fenBefore = updated.fen;
         const botMove = await this.gameService.makeBotMove(
           updated,
           botDepth,
           updated.room.botRating ?? 1000
         );
         if (botMove) {
+          sendEvent({
+            before_fen: fenBefore,
+            after_fen: botMove.game.fen,
+            from: msg.from,
+            to: msg.to,
+            promotion: msg.promotion,
+            gameId: botMove.game.id,
+            username,
+            botSide,
+          });
+
           this.roomService.broadcast(roomCode, {
             type: "move",
             from: botMove.from,
