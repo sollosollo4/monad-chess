@@ -203,7 +203,7 @@ export class WebSocketService {
             promotion: msg.promotion,
             gameId: botMove.game.id,
             username,
-            botSide,
+            sideToMove: botSide,
           });
 
           this.roomService.broadcast(roomCode, {
