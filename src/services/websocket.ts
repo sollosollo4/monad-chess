@@ -188,9 +188,9 @@ export class WebSocketService {
           getGame.game.room.botRating ?? 1200
         );
         const botMove = await this.gameService.makeBotMove(
-          getGame.game,
+          updated,
           botDepth,
-          getGame.game.room.botRating ?? 1000
+          updated.room.botRating ?? 1000
         );
         if (botMove) {
           this.roomService.broadcast(roomCode, {
@@ -201,18 +201,19 @@ export class WebSocketService {
             fen: botMove.chess.fen(),
             by: "BOT",
           });
-        }
-        if (!getGame.game.active) {
-          const result = await this.gameService.finalizeGame(
-            getGame.game,
-            chess,
-            'stalemate',
-            botSide
-          );
-          this.roomService.broadcast(roomCode, {
-            type: "game_over",
-            result,
-          });
+
+          if (!botMove.game.active) {
+            const result = await this.gameService.finalizeGame(
+              getGame.game,
+              chess,
+              "stalemate",
+              botSide
+            );
+            this.roomService.broadcast(roomCode, {
+              type: "game_over",
+              result,
+            });
+          }
         }
       }
 
@@ -242,7 +243,7 @@ export class WebSocketService {
         });
         return;
       }
-      console.log(e)
+      console.log(e);
       ws.send(JSON.stringify({ type: "error", message: (e as Error).message }));
     }
   }
