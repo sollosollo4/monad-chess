@@ -181,6 +181,29 @@ export class WebSocketService {
         blackTime: updated.blackTime,
       });
 
+      // Если игрок закончил игру (без бота)
+      if (!updated.active) {
+        const result = await this.gameService.finalizeGame(updated, chess);
+        this.roomService.broadcast(roomCode, {
+          type: "game_over",
+          result,
+        });
+        await UserExperience.give(user.id, "game_played");
+        const gameResultRepo = AppDataSource.getRepository(UserGameResult);
+        const newReslt = gameResultRepo.create({
+          game: updated,
+          user,
+          enemy: null,
+          bot: updated.room.bot,
+          is_bot: true,
+          result: result.winner == username ? "w" : "l",
+          color: updated.room.adminSide,
+          reason: result.reason
+        });
+        await gameResultRepo.save(newReslt);
+        return;
+      }
+
       const botSide =
         updated.white === "BOT"
           ? "white"
@@ -226,7 +249,7 @@ export class WebSocketService {
               enemy: null,
               bot: botMove.game.room.bot,
               is_bot: true,
-              result: 'l',
+              result: result.winner == username ? "w" : "l",
               color: botMove.game.room.adminSide,
               reason: result.reason
             });
@@ -234,28 +257,6 @@ export class WebSocketService {
 
           }
         }
-      }
-
-      // Если игрок закончил игру (без бота)
-      if (!updated.active) {
-        const result = await this.gameService.finalizeGame(updated, chess);
-        this.roomService.broadcast(roomCode, {
-          type: "game_over",
-          result,
-        });
-        await UserExperience.give(user.id, "game_played");
-        const gameResultRepo = AppDataSource.getRepository(UserGameResult);
-        const newReslt = gameResultRepo.create({
-          game: updated,
-          user,
-          enemy: null,
-          bot: updated.room.bot,
-          is_bot: true,
-          result: 'w',
-          color: updated.room.adminSide,
-          reason: result.reason
-        });
-        await gameResultRepo.save(newReslt);
       }
     } catch (e) {
       if (e instanceof TimeoutError) {
