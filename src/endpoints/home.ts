@@ -3,7 +3,6 @@ import { checkJwt, AuthRequest } from "../middleware/auth";
 import { AppDataSource } from "../config/database";
 import { UserExperience } from "../entity/UserExperience";
 
-
 const router = express.Router();
 
 router.get("/leaderboard", checkJwt, async (req: AuthRequest, res) => {
@@ -20,7 +19,7 @@ router.get("/leaderboard", checkJwt, async (req: AuthRequest, res) => {
       .andWhere("exp.submitted = :submitted", { submitted: true })
       .groupBy("user.id")
       .addGroupBy("user.username")
-      .orderBy("totalXp", "DESC")
+      .orderBy("SUM(exp.amount)", "DESC")
       .getRawMany();
 
     res.json({
