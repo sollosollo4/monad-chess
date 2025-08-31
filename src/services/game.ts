@@ -11,12 +11,12 @@ import { Helper } from "../utils/helper";
 
 type MoveReturnType = {
   game: Game;
-  chess: Chess; 
-  from: string; 
-  to: string; 
-  promotion: string|undefined;
+  chess: Chess;
+  from: string;
+  to: string;
+  promotion: string | undefined;
   san: string;
-}
+};
 export class TimeoutError extends Error {
   winner;
   constructor(winner: string) {
@@ -101,7 +101,11 @@ export class GameService {
     return { game };
   }
 
-  async makeBotMove(game: Game, botDepth: number, elo: number): Promise<MoveReturnType| null>{
+  async makeBotMove(
+    game: Game,
+    botDepth: number,
+    elo: number
+  ): Promise<MoveReturnType | null> {
     try {
       const chess = new Chess(game.fen);
       const best = await StockfishService.getBestMove(game.fen, botDepth, elo);
@@ -141,13 +145,20 @@ export class GameService {
         promotion: promotion,
         piece: move.piece,
         gameId: game.id,
-        username: 'BOT',
-        sideToMove: chess.turn() === 'w' ? 'b' : 'w',
+        username: "BOT",
+        sideToMove: chess.turn() === "w" ? "b" : "w",
       });
 
-      return { game, chess, from: move.from, to: move.to, san: move.san , promotion};
+      return {
+        game,
+        chess,
+        from: move.from,
+        to: move.to,
+        san: move.san,
+        promotion,
+      };
     } catch (error) {
-      if(error instanceof Error) {
+      if (error instanceof Error) {
         return await this.makeBotMove(game, botDepth, elo);
       }
       return null;
@@ -254,20 +265,21 @@ export class GameService {
 
   determineResult(chess: Chess) {
     if (chess.isCheckmate()) {
+      // сейчас ход того, кто ПОД матом → победил противоположный цвет
       return {
         reason: "checkmate",
-        winner: chess.turn() === "w" ? "black" :"white",
+        winner: chess.turn() === "w" ? "black" : "white",
       };
     }
-    if (chess.isStalemate())
-      return {
-        reason: "stalemate",
-        winner: chess.turn() === "w" ?  "black" :"white",
-      };
-    if (chess.isDraw()) return { reason: "draw", winner: null };
+    if (chess.isStalemate()) {
+      return { reason: "stalemate", winner: null }; // ПАТ = ничья
+    }
+    if (chess.isDraw()) {
+      return { reason: "draw", winner: null }; // любая ничья
+    }
     return {
       reason: "unknown",
-      winner: chess.turn() === "w" ? "black" : "white",
+      winner: null,
     };
   }
 }

@@ -169,7 +169,12 @@ export class WebSocketService {
         game: updated,
         chess,
       } = await this.gameService.makeMove(getGame.game, username, msg);
-
+      const userColor: "white" | "black" | null =
+          updated.white?.toLowerCase() === username.toLowerCase()
+            ? "white"
+            : updated.black?.toLowerCase() === username.toLowerCase()
+            ? "black"
+            : null;
       this.roomService.broadcast(roomCode, {
         type: "move",
         from: msg.from,
@@ -188,6 +193,12 @@ export class WebSocketService {
           type: "game_over",
           result,
         });
+        const outcome: "w" | "l" | "d" =
+          result.winner === null
+            ? "d"
+            : result.winner === userColor
+            ? "w"
+            : "l";
         await UserExperience.give(user.id, "game_played");
         const gameResultRepo = AppDataSource.getRepository(UserGameResult);
         const newReslt = gameResultRepo.create({
@@ -196,8 +207,8 @@ export class WebSocketService {
           enemy: null,
           bot: updated.room.bot,
           is_bot: true,
-          result: result.winner == username ? "w" : "l",
-          color: updated.room.adminSide,
+          result: outcome,
+          color: userColor ?? updated.room.adminSide,
           reason: result.reason
         });
         await gameResultRepo.save(newReslt);
@@ -242,6 +253,13 @@ export class WebSocketService {
               result,
             });
 
+          const outcome: "w" | "l" | "d" =
+            result.winner === null
+              ? "d"
+              : result.winner === userColor
+              ? "w"
+              : "l";
+
             const gameResultRepo = AppDataSource.getRepository(UserGameResult);
             const newReslt = gameResultRepo.create({
               game: botMove.game,
@@ -249,8 +267,8 @@ export class WebSocketService {
               enemy: null,
               bot: botMove.game.room.bot,
               is_bot: true,
-              result: result.winner == username ? "w" : "l",
-              color: botMove.game.room.adminSide,
+              result: outcome,
+              color: userColor ?? updated.room.adminSide,
               reason: result.reason
             });
             await gameResultRepo.save(newReslt);
