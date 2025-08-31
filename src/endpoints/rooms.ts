@@ -21,53 +21,60 @@ router.post(
   "/create",
   optionalAuthMiddleware,
   async (req: AuthRequest, res) => {
-    const repo = AppDataSource.getRepository(Room);
-    let code = genCode();
-    while (await repo.findOne({ where: { code } })) code = genCode();
-    const { mode, side, name: nameFromBody, botId } = req.body;
+    try {
+      const repo = AppDataSource.getRepository(Room);
+      let code = genCode();
+      while (await repo.findOne({ where: { code } })) code = genCode();
+      const { mode, side, name: nameFromBody, botId } = req.body;
 
-    let name: string;
-    if (req.user?.userId) {
-      const userRepo = AppDataSource.getRepository(User);
-      const user = await userRepo.findOneOrFail({
-        where: { id: req.user.userId },
+      let name: string;
+      if (req.user?.userId) {
+        const userRepo = AppDataSource.getRepository(User);
+        const user = await userRepo.findOneOrFail({
+          where: { id: req.user.userId },
+        });
+        name = user.username;
+      } else {
+        name = nameFromBody;
+      }
+
+      const validModes = ["pvp", "bot"];
+      const validSides = ["white", "black", "random"];
+
+      if (mode && !validModes.includes(mode)) {
+        return res
+          .status(400)
+          .json({ error: "Invalid mode. Use 'pvp' or 'bot'." });
+      }
+
+      if (side && !validSides.includes(side)) {
+        return res
+          .status(400)
+          .json({ error: "Invalid side. Use 'white', 'black' or 'random'." });
+      }
+
+      let botRating = null;
+      if (botId) {
+        const botRepo = AppDataSource.getRepository(Bot);
+        const getBot = await botRepo.findOneOrFail({ where: { id: botId } });
+        botRating = getBot.rating;
+      }
+
+      const room = repo.create({
+        code,
+        name: name,
+        mode: (mode as RoomMode) || "pvp",
+        adminSide: (side as Side) || "random",
+        botRating,
       });
-      name = user.username;
-    } else {
-      name = nameFromBody;
+      await repo.save(room);
+      res.json({ code: room.code });
+    } catch (err) {
+      return res.status(500).json({
+        error: "Internal error",
+        details: (err as Error).message,
+      });
     }
-
-    const validModes = ["pvp", "bot"];
-    const validSides = ["white", "black", "random"];
-
-    if (mode && !validModes.includes(mode)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid mode. Use 'pvp' or 'bot'." });
-    }
-
-    if (side && !validSides.includes(side)) {
-      return res
-        .status(400)
-        .json({ error: "Invalid side. Use 'white', 'black' or 'random'." });
-    }
-
-    let botRating = null;
-    if (botId) {
-      const botRepo = AppDataSource.getRepository(Bot);
-      const getBot = await botRepo.findOneOrFail({ where: { id: botId } });
-      botRating = getBot.rating;
-    }
-
-    const room = repo.create({
-      code,
-      name: name,
-      mode: (mode as RoomMode) || "pvp",
-      adminSide: (side as Side) || "random",
-      botRating,
-    });
-    await repo.save(room);
-    res.json({ code: room.code });
   }
 );
 

@@ -16,49 +16,63 @@ import { UserExperience } from "../entity/UserExperience";
 const router = express.Router();
 
 router.get("/greetings", checkJwt, async (req: AuthRequest, res: Response) => {
-  const greeting = await LlmPuzzleService.greetPlayer(req.user?.username);
-  return res.json({
-    greeting,
-  });
+  try {
+    const greeting = await LlmPuzzleService.greetPlayer(req.user?.username);
+    return res.json({
+      greeting,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Internal error",
+      details: (err as Error).message,
+    });
+  }
 });
 
 router.get("/random", checkJwt, async (req: AuthRequest, res: Response) => {
-  const puzzleRepo = AppDataSource.getRepository(Puzzle);
-  let min = 0;
-  let max = 3316;
-  if (req.user) {
-    const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOneBy({ id: req.user.userId });
-    if (!user || !user.puzzleRating) {
-      return res.status(400).json({ error: "User puzzleRating not set" });
+  try {
+    const puzzleRepo = AppDataSource.getRepository(Puzzle);
+    let min = 0;
+    let max = 3316;
+    if (req.user) {
+      const userRepo = AppDataSource.getRepository(User);
+      const user = await userRepo.findOneBy({ id: req.user.userId });
+      if (!user || !user.puzzleRating) {
+        return res.status(400).json({ error: "User puzzleRating not set" });
+      }
+      const rating = user.puzzleRating;
+      min = Math.max(rating - 50, 0);
+      max = rating + 50;
+    } else {
+      min = 0;
+      max = 500;
     }
-    const rating = user.puzzleRating;
-    min = Math.max(rating - 50, 0);
-    max = rating + 50;
-  } else {
-    min = 0;
-    max = 500;
-  }
-  if (min > max) {
-    return res
-      .status(400)
-      .json({ error: "`minRating` must be <= `maxRating`" });
-  }
+    if (min > max) {
+      return res
+        .status(400)
+        .json({ error: "`minRating` must be <= `maxRating`" });
+    }
 
-  const puzzle = await puzzleRepo
-    .createQueryBuilder("p")
-    .where("p.rating BETWEEN :min AND :max", { min, max })
-    .orderBy("RANDOM()")
-    .limit(1)
-    .getOne();
+    const puzzle = await puzzleRepo
+      .createQueryBuilder("p")
+      .where("p.rating BETWEEN :min AND :max", { min, max })
+      .orderBy("RANDOM()")
+      .limit(1)
+      .getOne();
 
-  if (!puzzle) {
-    return res.status(404).json({ error: "No puzzle found in range" });
+    if (!puzzle) {
+      return res.status(404).json({ error: "No puzzle found in range" });
+    }
+
+    return res.json({
+      puzzle,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Internal error",
+      details: (err as Error).message,
+    });
   }
-
-  return res.json({
-    puzzle
-  });
 });
 
 router.post("/check", checkJwt, async (req: AuthRequest, res: Response) => {
