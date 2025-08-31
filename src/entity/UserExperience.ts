@@ -50,7 +50,10 @@ export class UserExperience {
   public static async give(userId: number, event: ExperienceType) {
     const userRepo = AppDataSource.getRepository(User);
     const userExp = AppDataSource.getRepository(UserExperience);
-    const user = await userRepo.findOneBy({ id: userId });
+    const user = await userRepo.findOne({
+      where: { id: userId },
+      relations: ["accounts"],
+    });
     if (!user) return;
     const xp = userExp.create({
       user,
