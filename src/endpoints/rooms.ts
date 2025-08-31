@@ -23,6 +23,7 @@ router.post(
   async (req: AuthRequest, res) => {
     try {
       const repo = AppDataSource.getRepository(Room);
+      const botRepo = AppDataSource.getRepository(Bot);
       let code = genCode();
       while (await repo.findOne({ where: { code } })) code = genCode();
       const { mode, side, name: nameFromBody, botId } = req.body;
@@ -53,11 +54,12 @@ router.post(
           .json({ error: "Invalid side. Use 'white', 'black' or 'random'." });
       }
 
-      let botRating = null;
+      let bot: Bot | null = null;
+      let botRating: number | null = null;
+
       if (botId) {
-        const botRepo = AppDataSource.getRepository(Bot);
-        const getBot = await botRepo.findOneOrFail({ where: { id: botId } });
-        botRating = getBot.rating;
+        bot = await botRepo.findOneOrFail({ where: { id: botId } });
+        botRating = bot.rating;
       }
 
       const room = repo.create({
@@ -66,6 +68,7 @@ router.post(
         mode: (mode as RoomMode) || "pvp",
         adminSide: (side as Side) || "random",
         botRating,
+        bot,
       });
       await repo.save(room);
       res.json({ code: room.code });

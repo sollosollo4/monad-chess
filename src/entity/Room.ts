@@ -3,7 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
+import { Bot } from "./Bot";
 
 export type RoomMode = "pvp" | "bot";
 export type Side = "white" | "black" | "random";
@@ -15,7 +19,7 @@ export class Room {
   @Column({ unique: true })
   code!: string; // short code
 
-  @Column({  type: "varchar", nullable: true })
+  @Column({ type: "varchar", nullable: true })
   name?: string | null;
 
   @CreateDateColumn()
@@ -28,5 +32,9 @@ export class Room {
   adminSide!: Side;
 
   @Column({ type: "int", nullable: true })
-  botRating?: number|null;
+  botRating?: number | null;
+
+  @ManyToOne(() => Bot, { nullable: true })
+  @JoinColumn()
+  bot?: Bot | null;
 }

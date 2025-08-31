@@ -12,6 +12,7 @@ import { Chess } from "chess.js";
 import { Helper } from "../utils/helper";
 import { sendEvent } from "../rabbitmq/client";
 import { UserExperience } from "../entity/UserExperience";
+import { UserGameResult } from "../entity/UserGameResult";
 
 interface IWebSocketServiceOptions {
   port?: number;
@@ -156,7 +157,8 @@ export class WebSocketService {
     const username = (ws as any).username;
     const roomCode = (ws as any).room;
     try {
-      if (!username || !roomCode) throw new Error("Not authenticated");
+      const user = await this.authService.authenticate(msg.token);
+      if (!username || !roomCode || !user) throw new Error("Not authenticated");
       const getGame = await this.gameService.getOrCreateGame(
         roomCode,
         username
@@ -216,6 +218,19 @@ export class WebSocketService {
               type: "game_over",
               result,
             });
+
+            const gameResultRepo = AppDataSource.getRepository(UserGameResult);
+            const newReslt = gameResultRepo.create({
+              game: getGame.game,
+              user,
+              enemy: null,
+              bot: getGame.game.room.bot,
+              is_bot: true,
+              result: 'l',
+              color: getGame.game.room.adminSide,
+            });
+            await gameResultRepo.save(newReslt);
+
           }
         }
       }
@@ -227,12 +242,22 @@ export class WebSocketService {
           type: "game_over",
           result,
         });
-        
-        const user = await this.authService.authenticate(msg.token);
         await UserExperience.give(user.id, "game_played");
+        const gameResultRepo = AppDataSource.getRepository(UserGameResult);
+        const newReslt = gameResultRepo.create({
+          game: getGame.game,
+          user,
+          enemy: null,
+          bot: getGame.game.room.bot,
+          is_bot: true,
+          result: 'w',
+          color: getGame.game.room.adminSide,
+        });
+        await gameResultRepo.save(newReslt);
       }
     } catch (e) {
       if (e instanceof TimeoutError) {
+        const user = await this.authService.authenticate(msg.token);
         const getGame = await this.gameService.getOrCreateGame(
           roomCode,
           username
@@ -247,6 +272,17 @@ export class WebSocketService {
           type: "game_over",
           result,
         });
+        const gameResultRepo = AppDataSource.getRepository(UserGameResult);
+        const newReslt = gameResultRepo.create({
+          game: getGame.game,
+          user,
+          enemy: null,
+          bot: getGame.game.room.bot,
+          is_bot: getGame.game.room.bot == null ? false : true,
+          result: 'l',
+          color: getGame.game.room.adminSide,
+        });
+        await gameResultRepo.save(newReslt);
         return;
       }
       console.log(e);
