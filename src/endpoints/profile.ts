@@ -149,6 +149,7 @@ router.post("/updateRating", checkJwt, async (req: AuthRequest, res) => {
 
       for (const exp of unsubmitted) {
         exp.submitted = true;
+        exp.transactionHash = result.hash;
       }
       await expRepo.save(unsubmitted);
 
