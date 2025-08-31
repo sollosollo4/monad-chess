@@ -44,7 +44,7 @@ export class UserExperience {
   @CreateDateColumn()
   createdAt!: Date;
 
-  @Column({ type: "string" })
+  @Column({ type: "varchar" })
   transactionHash!: string;
 
   public static async give(userId: number, event: ExperienceType) {
