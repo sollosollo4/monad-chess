@@ -209,7 +209,7 @@ export class WebSocketService {
 
           if (!botMove.game.active) {
             const result = await this.gameService.finalizeGame(
-              getGame.game,
+              botMove.game,
               chess,
               "stalemate",
               botSide
@@ -221,13 +221,13 @@ export class WebSocketService {
 
             const gameResultRepo = AppDataSource.getRepository(UserGameResult);
             const newReslt = gameResultRepo.create({
-              game: getGame.game,
+              game: botMove.game,
               user,
               enemy: null,
-              bot: getGame.game.room.bot,
+              bot: botMove.game.room.bot,
               is_bot: true,
               result: 'l',
-              color: getGame.game.room.adminSide,
+              color: botMove.game.room.adminSide,
               reason: result.reason
             });
             await gameResultRepo.save(newReslt);
@@ -238,7 +238,7 @@ export class WebSocketService {
 
       // Если игрок закончил игру (без бота)
       if (!updated.active && !botSide) {
-        const result = await this.gameService.finalizeGame(getGame.game, chess);
+        const result = await this.gameService.finalizeGame(updated, chess);
         this.roomService.broadcast(roomCode, {
           type: "game_over",
           result,
@@ -246,13 +246,13 @@ export class WebSocketService {
         await UserExperience.give(user.id, "game_played");
         const gameResultRepo = AppDataSource.getRepository(UserGameResult);
         const newReslt = gameResultRepo.create({
-          game: getGame.game,
+          game: updated,
           user,
           enemy: null,
-          bot: getGame.game.room.bot,
+          bot: updated.room.bot,
           is_bot: true,
           result: 'w',
-          color: getGame.game.room.adminSide,
+          color: updated.room.adminSide,
           reason: result.reason
         });
         await gameResultRepo.save(newReslt);
