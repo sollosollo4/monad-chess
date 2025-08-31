@@ -11,6 +11,7 @@ import LlmPuzzleService from "../services/llm_puzzle_service";
 import { Chess } from "chess.js";
 import { Helper } from "../utils/helper";
 import { sendEvent } from "../rabbitmq/client";
+import { UserExperience } from "../entity/UserExperience";
 
 interface IWebSocketServiceOptions {
   port?: number;
@@ -226,6 +227,9 @@ export class WebSocketService {
           type: "game_over",
           result,
         });
+        
+        const user = await this.authService.authenticate(msg.token);
+        await UserExperience.give(user.id, "game_played");
       }
     } catch (e) {
       if (e instanceof TimeoutError) {

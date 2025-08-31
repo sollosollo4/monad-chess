@@ -1,14 +1,21 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+} from "typeorm";
 import { User } from "./User";
 import { AppDataSource } from "../config/database";
+import { isValidAddress, updatePlayerData } from "../services/blockchain";
 
 const XP_VALUES: Record<ExperienceType, number> = {
-    register: 500,
-    daily_checkin: 100,
-    puzzle_solved: 300,
-    game_played: 500,
-    achievement: 1000,
-}
+  register: 500,
+  daily_checkin: 100,
+  puzzle_solved: 300,
+  game_played: 500,
+  achievement: 1000,
+};
 
 export type ExperienceType =
   | "register"
@@ -37,17 +44,42 @@ export class UserExperience {
   @CreateDateColumn()
   createdAt!: Date;
 
+  @Column({ type: "string" })
+  transactionHash!: string;
+
   public static async give(userId: number, event: ExperienceType) {
     const userRepo = AppDataSource.getRepository(User);
     const userExp = AppDataSource.getRepository(UserExperience);
     const user = await userRepo.findOneBy({ id: userId });
-    if(!user) return;
+    if (!user) return;
     const xp = userExp.create({
-        user,
-        type: event,
-        amount: XP_VALUES[event],
-        submitted: false,
+      user,
+      type: event,
+      amount: XP_VALUES[event],
+      submitted: false,
     });
     await userExp.save(xp);
+    try {
+      if (user.monad_games_id) {
+        const playerAddress = user.accounts
+          .filter((x) => x.provider == "monad")
+          .pop()?.providerUserId;
+        if (!playerAddress || !isValidAddress(playerAddress)) {
+          return;
+        }
+        const result = await updatePlayerData(
+          playerAddress,
+          XP_VALUES[event],
+          0
+        );
+        if (result.hash) {
+          xp.submitted = true;
+          xp.transactionHash = result.hash;
+          await userExp.save(xp);
+        }
+      }
+    } catch (error) {
+      console.log(error);
+    }
   }
 }
