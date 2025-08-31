@@ -85,11 +85,11 @@ router.post("/updateRating", checkJwt, async (req: AuthRequest, res) => {
       if (!Helper.validateOrigin(req)) {
         //return res.status(403).json({ error: "Forbidden: Invalid origin" });
       }
-      if (user.updateRatingCalls == 0) {
-        return res
-          .status(422)
-          .json({ error: "The user has reached the rating update limit" });
-      }
+      // if (user.updateRatingCalls == 0) {
+      //   return res
+      //     .status(422)
+      //     .json({ error: "The user has reached the rating update limit" });
+      // }
       const clientIp =
         req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || "unknown";
 
