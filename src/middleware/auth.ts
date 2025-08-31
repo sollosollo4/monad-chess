@@ -7,13 +7,14 @@ export interface AuthRequest extends Request {
 }
 
 export function checkJwt(req: AuthRequest, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization || req.headers.Authorization as string;
-   if (!authHeader.startsWith("Bearer ")) {
-    return res.fail(
-      'Unauthorized',
-      'Invalid authorization header format',
-      401
-    );
+  const authHeader =
+    req.headers.authorization || (req.headers.Authorization as string);
+  if (!authHeader) {
+    req.user = null;
+    return next();
+  }
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.fail("Unauthorized", "Invalid authorization header format", 401);
   }
   const token = authHeader.split(" ")[1];
   if (!token) return res.status(401).json({ message: "No token provided" });
