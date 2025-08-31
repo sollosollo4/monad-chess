@@ -13,7 +13,7 @@ router.post("/pass", optionalAuthMiddleware, async (req: AuthRequest, res) => {
   const gameRepo = AppDataSource.getRepository(Game);
   const userRepo = AppDataSource.getRepository(User);
 
-  const user = await userRepo.findOneOrFail(req.user.userId);
+  const user = await userRepo.findOneOrFail({ where:{ id:req.user.userId}});
 
   const game = await gameRepo.findOneOrFail({
     where: { room: { code } },
