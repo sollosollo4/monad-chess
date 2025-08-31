@@ -70,7 +70,7 @@ export class UserExperience {
         const result = await updatePlayerData(
           playerAddress,
           XP_VALUES[event],
-          0
+          1
         );
         if (result.hash) {
           xp.submitted = true;
