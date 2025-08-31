@@ -228,6 +228,7 @@ export class WebSocketService {
               is_bot: true,
               result: 'l',
               color: getGame.game.room.adminSide,
+              reason: result.reason
             });
             await gameResultRepo.save(newReslt);
 
@@ -252,6 +253,7 @@ export class WebSocketService {
           is_bot: true,
           result: 'w',
           color: getGame.game.room.adminSide,
+          reason: result.reason
         });
         await gameResultRepo.save(newReslt);
       }
@@ -281,6 +283,7 @@ export class WebSocketService {
           is_bot: getGame.game.room.bot == null ? false : true,
           result: 'l',
           color: getGame.game.room.adminSide,
+          reason: result.reason
         });
         await gameResultRepo.save(newReslt);
         return;

@@ -32,6 +32,9 @@ export class UserGameResult {
   @Column({ type: "varchar", nullable: true })
   color!: string | null; // (white / black)
 
+  @Column({type: "varchar", nullable: true})
+  reason!: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 }
