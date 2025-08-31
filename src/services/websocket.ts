@@ -237,7 +237,7 @@ export class WebSocketService {
       }
 
       // Если игрок закончил игру (без бота)
-      if (!updated.active && !botSide) {
+      if (!updated.active) {
         const result = await this.gameService.finalizeGame(updated, chess);
         this.roomService.broadcast(roomCode, {
           type: "game_over",
