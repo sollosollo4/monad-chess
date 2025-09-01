@@ -59,7 +59,7 @@ router.get("/games", checkJwt, async (req: AuthRequest, res) => {
     const repo = AppDataSource.getRepository(UserGameResult);
     const games = await repo.find({
       where: { user: { id: userId } },
-      relations: ["game", "enemy", "bot"],
+      relations: ["game", "game.room", "enemy", "bot"],
       order: { createdAt: "DESC" },
     });
 
