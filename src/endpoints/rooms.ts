@@ -191,6 +191,7 @@ router.get("/analyze/:code", async (req, res) => {
 
     const room = await roomRepo.findOne({
       where: { code: req.params.code },
+      relations: ['bot']
     });
 
     if (!room) {
